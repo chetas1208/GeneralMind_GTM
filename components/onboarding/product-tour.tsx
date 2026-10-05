@@ -1,89 +1,94 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Joyride, STATUS, type EventData, type Step } from "react-joyride";
 
-const KEY = "generalmind-tour-v1";
+const VERSION = "v1";
+const KEY = "generalmind-tour-completed";
 
 const STEPS: Step[] = [
   {
-    target: "#tour-radar",
-    content: "Start here. Radar tells you where GTM opportunity is rising or falling and what is driving the change.",
-    title: "Radar",
+    target: "[data-tour='radar']",
+    title: "1 / 7 · Start with Radar",
+    content: "Radar shows where opportunity is building, what changed, and what deserves attention now.",
   },
   {
-    target: "#tour-momentum",
-    content: "This tracks the strength of review-ready opportunities over time, weighted by priority and evidence. Look here first.",
-    title: "Opportunity momentum",
+    target: "[data-tour='momentum']",
+    title: "2 / 7 · Rising or falling",
+    content: "Momentum tracks the strength of active opportunities using fit, evidence, urgency and freshness.",
   },
   {
-    target: "#tour-drivers",
-    content: "These are the largest contributors to the change. Open one to inspect the event behind it.",
-    title: "Why it moved",
+    target: "[data-tour='drivers']",
+    title: "3 / 7 · What moved the market",
+    content: "These drivers explain why momentum changed. Open one to inspect the underlying event.",
   },
   {
-    target: "#tour-next",
-    content: "One recommended next step — the strongest unreviewed opportunity, or an event that still needs research.",
-    title: "What to do next",
+    target: "[data-tour='events']",
+    title: "4 / 7 · Find the right moments",
+    content: "Events are ranked by GeneralMind relevance. Each one explains why it matters and what we've already found.",
   },
   {
-    target: "#tour-events",
-    content: "Every event explains why GeneralMind should care, which functions are there, and what we've already found.",
-    title: "Upcoming events",
+    target: "[data-tour='leads']",
+    title: "5 / 7 · People worth contacting",
+    content: "Every opportunity includes the person, company, timing, score and supporting evidence. You do not need CRM access to understand it.",
   },
   {
-    target: "a[href='/leads']",
-    content: "This is where you inspect decision-makers: company, role, evidence, score, and why now.",
-    title: "Leads",
+    target: "[data-tour='trace']",
+    title: "6 / 7 · Interrogate the recommendation",
+    content: "Evidence shows what is verified. Trace explains how the signals, account, person and opportunity connect.",
   },
   {
-    target: "a[href='/pipeline']",
-    content: "Approve or pass opportunities here. Approved ones can be pushed to CRM.",
-    title: "Pipeline",
+    target: "[data-tour='pipeline']",
+    title: "7 / 7 · Make the decision",
+    content: "Approve, pass, add notes, and push approved opportunities to CRM. That's the complete workflow.",
   },
 ];
 
 export function ProductTour({ auto = false }: { auto?: boolean }) {
-  const router = useRouter();
   const [run, setRun] = useState(false);
-  const [welcome, setWelcome] = useState(() => auto && typeof window !== "undefined" && !localStorage.getItem(KEY));
+  const [welcome, setWelcome] = useState(false);
 
   useEffect(() => {
-    const onStart = () => setRun(true);
+    const done = localStorage.getItem(KEY);
+    const version = localStorage.getItem("generalmind-tour-version");
+    if (auto && (done !== "1" || version !== VERSION)) {
+      const id = window.setTimeout(() => setWelcome(true), 400);
+      return () => window.clearTimeout(id);
+    }
+    return undefined;
+  }, [auto]);
+
+  useEffect(() => {
+    const onStart = () => {
+      setWelcome(false);
+      setRun(true);
+    };
     window.addEventListener("gm-start-tour", onStart);
     return () => window.removeEventListener("gm-start-tour", onStart);
-  }, [auto]);
+  }, []);
+
+  function finish() {
+    localStorage.setItem(KEY, "1");
+    localStorage.setItem("generalmind-tour-version", VERSION);
+    setRun(false);
+    setWelcome(false);
+  }
 
   return (
     <>
       {welcome && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-w-md rounded-xl border bg-card p-5 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 sm:items-center">
+          <div className="w-full max-w-md rounded-xl border border-border/70 bg-card p-5 shadow-2xl">
             <h2 className="text-base font-semibold">Welcome to GeneralMind Radar</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Radar turns market signals into evidence-backed GTM opportunities. You will use Radar to see what is changing, Leads to review people, and Pipeline to track decisions.
+              Find the right market moments, understand why they matter, and turn them into reviewable opportunities.
             </p>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground"
-                onClick={() => {
-                  setWelcome(false);
-                  setRun(true);
-                }}
-              >
-                Take 60-second tour
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button type="button" className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground" onClick={() => { setWelcome(false); setRun(true); }}>
+                Take the 60-second tour
               </button>
-              <button
-                type="button"
-                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground"
-                onClick={() => {
-                  localStorage.setItem(KEY, "dismissed");
-                  setWelcome(false);
-                }}
-              >
-                Explore myself
+              <button type="button" className="rounded-md px-3 py-1.5 text-sm text-muted-foreground" onClick={finish}>
+                Skip
               </button>
             </div>
           </div>
@@ -96,11 +101,7 @@ export function ProductTour({ auto = false }: { auto?: boolean }) {
         scrollToFirstStep
         options={{ buttons: ["back", "primary", "skip"] }}
         onEvent={(data: EventData) => {
-          if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
-            localStorage.setItem(KEY, data.status);
-            setRun(false);
-            router.refresh();
-          }
+          if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) finish();
         }}
       />
     </>

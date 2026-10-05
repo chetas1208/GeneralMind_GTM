@@ -229,7 +229,24 @@ export function LeadsWorkbench({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border/80 bg-card/30">
+          <>
+          <ul className="divide-y rounded-xl border border-border/80 bg-card/30 md:hidden">
+            {items.map((l) => (
+              <li key={l.id}>
+                <button type="button" className="w-full px-3 py-3 text-left" onClick={() => selectLead(l.id)}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-medium">{l.person.fullName}</p>
+                      <p className="text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
+                    </div>
+                    <ScoreBadge score={l.priorityScore} size="sm" />
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{l.event.name} · {leadStatusLabel(l.status)}</p>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto rounded-xl border border-border/80 bg-card/30 md:block">
             <table className="w-full min-w-[720px] text-left">
               <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -301,6 +318,7 @@ export function LeadsWorkbench({
               {items.length} of {total} · ↑↓ between leads · A approve · R reject · Esc close
             </p>
           </div>
+          </>
         )}
       </div>
 

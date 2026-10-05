@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Kanban, LogOut, Radar, Search, Users, PanelLeftClose, PanelLeft } from "lucide-react";
+import { CircleHelp, Kanban, LogOut, Radar, Search, Users, PanelLeftClose, PanelLeft } from "lucide-react";
+import { restartProductTour } from "@/components/onboarding/product-tour";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -52,6 +53,7 @@ export function CompactSidebar({
             <Link
               key={href}
               href={href}
+              data-tour={href === "/leads" ? "leads" : href === "/pipeline" ? "pipeline" : undefined}
               title={label}
               className={cn(
                 "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
@@ -67,6 +69,18 @@ export function CompactSidebar({
       </nav>
 
       <div className="border-t border-border/60 p-2">
+        <button
+          type="button"
+          title="Restart product tour"
+          onClick={() => restartProductTour()}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground",
+            collapsed && "justify-center px-0",
+          )}
+        >
+          <CircleHelp className="size-4 shrink-0" />
+          {!collapsed && <span className="flex-1 text-left">Help</span>}
+        </button>
         <button
           type="button"
           onClick={onSearch}

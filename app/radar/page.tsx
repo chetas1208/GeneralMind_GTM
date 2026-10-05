@@ -6,7 +6,6 @@ import { ScoreBadge } from "@/components/gtm/badges";
 import { GraphView } from "@/components/graph/graph-view";
 import { MomentumChart } from "@/components/radar/momentum-chart";
 import { ProductTour } from "@/components/onboarding/product-tour";
-import { TourHelp } from "@/components/onboarding/tour-help";
 import { loadActivity } from "@/lib/analytics/activity";
 import { loadDrivers } from "@/lib/analytics/drivers";
 import { loadFunnel } from "@/lib/analytics/funnel";
@@ -87,7 +86,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
   });
 
   return (
-    <div id="tour-radar" className="space-y-6">
+    <div data-tour="radar" className="space-y-6">
       <ProductTour auto />
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -95,7 +94,6 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
           <p className="max-w-xl text-sm text-muted-foreground">Your highest-value GTM signals, opportunities, and upcoming moments.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <TourHelp />
           <div className="flex gap-1 text-[11px]">
             {(["7", "30", "90"] as const).map((r) => (
               <Link key={r} href={`/radar?range=${r}`} className={`rounded-md px-2 py-1 ${range === r ? "bg-accent" : "text-muted-foreground"}`}>
@@ -104,7 +102,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
             ))}
           </div>
           <RefreshIntelligenceButton />
-          <DiscoverEventsButton disabled={Boolean(activeDiscovery) || !canSource} />
+          <DiscoverEventsButton running={Boolean(activeDiscovery)} runId={activeDiscovery?.id} canStart={canSource} />
         </div>
       </header>
 
@@ -127,13 +125,16 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
       {selected.length === 0 && topOpps.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center">
           <p className="font-medium">No market signals yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Start by discovering relevant events. Radar will rank them and identify the ones worth researching.</p>
+          <p data-tour="momentum" className="mt-1 text-sm text-muted-foreground">Start by discovering relevant events. Radar will rank them and identify the ones worth researching.</p>
+          <span data-tour="drivers" className="sr-only">Drivers appear after opportunities exist.</span>
+          <span data-tour="events" className="sr-only">Events appear after discovery.</span>
+          <span data-tour="trace" className="sr-only">Trace lives on a lead.</span>
         </div>
       ) : (
         <>
           <MomentumChart series={series} />
 
-          <section id="tour-drivers">
+          <section data-tour="drivers">
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why momentum changed</h2>
             {drivers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No new review-ready opportunities in this window yet.</p>
@@ -198,7 +199,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
             <Link href={next.href} className="mt-2 inline-block text-sm text-sky-400 hover:underline">{next.cta} →</Link>
           </section>
 
-          <section id="tour-events" className="space-y-2">
+          <section data-tour="events" className="space-y-2">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming events</h2>
             {rankedEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No events on Radar yet.</p>
@@ -253,7 +254,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
           </section>
 
           <p className="text-[11px] text-muted-foreground">
-            Need the relationship chain for one record? Open a lead and use <span className="text-foreground">Why this opportunity</span>, or{" "}
+            <span data-tour="trace">Need the relationship chain for one record? Open a lead and use Why this opportunity, or{" "}</span>
             <Link href="/radar?view=graph" className="underline">explore relationships</Link> (advanced).
           </p>
         </>

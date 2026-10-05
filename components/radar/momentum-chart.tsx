@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { InfoHint } from "@/components/ui/info-hint";
 import type { MomentumPoint, MomentumSeries } from "@/lib/analytics/types";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +17,13 @@ export function MomentumChart({ series }: { series: MomentumSeries }) {
   const delta = series.deltaPct;
 
   return (
-    <section id="tour-momentum" className="rounded-xl border border-border/60 bg-card/40 p-4">
+    <section data-tour="momentum" className="rounded-xl border border-border/60 bg-card/40 p-4 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.45)]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="flex items-center gap-1.5">
           <h2 className="text-sm font-semibold">Opportunity momentum</h2>
-          <p className="text-[11px] text-muted-foreground" title="A time-based measure of active opportunity strength. Higher-priority, better-supported and more recent opportunities contribute more.">
-            Priority × evidence confidence, by day opportunities became review-ready.
-          </p>
+          <InfoHint label="About momentum">
+            Measures the strength of active opportunities using priority, evidence and freshness.
+          </InfoHint>
         </div>
         <div className="flex gap-1 text-[11px]">
           {METRICS.map((m) => (
