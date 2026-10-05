@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { handle, json } from "@/lib/api";
+import { requireReviewer } from "@/lib/auth";
 import { listLeads } from "@/lib/db/queries/leads";
 
 const querySchema = z.object({
@@ -19,6 +20,7 @@ const STATUSES = ["discovered", "enriching", "qualified", "needs_review", "appro
 
 export async function GET(request: Request) {
   return handle(async () => {
+    await requireReviewer(request);
     const raw = Object.fromEntries(new URL(request.url).searchParams);
     const q = querySchema.parse(raw);
     const statuses = q.status

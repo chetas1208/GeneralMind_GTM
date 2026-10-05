@@ -292,16 +292,20 @@ Drizzle schema in `lib/db/schema.ts`; migrations in `db/migrations`.
 
 | Control | Implementation |
 | --- | --- |
-| Authentication | Shared reviewer password → **signed, expiring session cookie** (`httpOnly`, `secure` in production, `sameSite=lax`, 7-day TTL). Sign-out supported. |
-| Fail closed | Without both `APP_ACCESS_PASSWORD` and `AUTH_SECRET`, production returns 503; it never falls open. Local dev without them is open. |
-| Authorization | The proxy gates every page and API route; **every mutation re-checks the session inside the handler** (`requireReviewer`). Hiding buttons is never the control. |
+| Authentication | Shared reviewer password compared in constant time. Login issues a **new** signed session (`httpOnly`, `secure` in production, `sameSite=lax`, 7-day TTL). The session id is stored in Postgres and **logout revokes it**. |
+| Fail closed | Without both `APP_ACCESS_PASSWORD` and `AUTH_SECRET`, production returns 503; it never falls open. Local dev without them is open. `AUTH_SECRET` must be a long random string (`openssl rand -base64 32`). |
+| Authorization | The proxy checks the signed session **and** that it has not been revoked. Every API handler calls `requireReviewer` again. Hiding buttons is never the control. |
+| Origin | State-changing requests with a foreign `Origin` or `Sec-Fetch-Site: cross-site` are rejected. |
+| Login throttling | Eight failed attempts per client per 10 minutes, then a temporary cooldown. No permanent lockout. Passwords are not logged. |
 | Protected actions | Source events, discover events, refresh intelligence, approve / reject, edit notes, push to CRM, cancel / retry runs, create / update events. |
-| Input validation | Zod on bodies and params; UUID checks on route params; status transitions enforced server-side. |
-| Abuse protection | Authenticated access, run-state locks, duplicate-run protection, a 10-minute per-account refresh cooldown, bounded batch size. |
-| Secrets | Server-side only; `NEXT_PUBLIC_*` holds the public site URL and nothing else. Logs redact key patterns. `.env*` is git-ignored. |
-| Scraped content | Never rendered as HTML. External links are validated to `http(s)` and use `rel="noopener noreferrer"`. |
-| Headers | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`/`frame-ancestors`, `Permissions-Policy`, HSTS. |
+| Input validation | Zod on bodies and params; UUID checks on route params; request bodies capped; status transitions are conditional updates so two tabs cannot overwrite each other. |
+| Abuse protection | Authenticated access, run-state locks, duplicate-run protection, one in-flight HubSpot sync per lead, a 10-minute per-account refresh cooldown, bounded batch size. |
+| Secrets | Server-side only; `NEXT_PUBLIC_*` holds the public site URL and nothing else. Logs and stored run errors redact key patterns. `.env*` is git-ignored. |
+| Scraped content | Never rendered as HTML. External links are validated to `http(s)` and use `rel="noopener noreferrer"`. URLs sent to the page fetcher must be public http(s); loopback, link-local, and private ranges are refused. Page text sent to the model is delimited as untrusted data. |
+| Headers | `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`/`frame-ancestors`, `Permissions-Policy`, HSTS, and a report-only content security policy. |
+| Durable work | Provider calls and database writes for a run sit inside Inngest steps. Transient provider errors retry; permanent ones do not. A redelivery of the same run generation is ignored; reopening a failed run bumps the generation. A run with an expired lease and no recent progress is marked failed so it can be retried. Completed work is kept. |
 | Inngest | `/api/inngest` verifies request signatures with `INNGEST_SIGNING_KEY`. |
+| Recovery | Neon keeps point-in-time history and branches. Migrations are applied explicitly with `pnpm db:migrate` before a deploy that needs them. They are not run during the Vercel build. |
 
 ## Repository structure
 
@@ -373,6 +377,7 @@ Optional: backfill event signals from an existing event graph — `pnpm exec tsx
 - Create a migration after changing it: `pnpm db:generate`.
 - Apply migrations: `pnpm db:migrate` (reads `DATABASE_URL`).
 - Migrations are **not** run automatically by Vercel. Run `pnpm db:migrate` against the production database *before* deploying a schema change. A fresh database migrates cleanly from `0000`.
+- Neon’s point-in-time restore and database branches are the recovery path. Do not add a second backup service in this app.
 
 ## Production deployment
 

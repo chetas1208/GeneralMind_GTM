@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { handle, json } from "@/lib/api";
+import { requireReviewer } from "@/lib/auth";
 import { buildGraph } from "@/lib/graph/builder";
 import { diffGraphs } from "@/lib/graph/delta";
 import { layoutGraph } from "@/lib/graph/layout";
@@ -21,6 +22,7 @@ const bodySchema = z.object({
 /** Incremental graph updates while a source run is active (poll every 2–4s). */
 export async function POST(request: Request) {
   return handle(async () => {
+    await requireReviewer(request);
     const { scope, entityId, runId, previous } = bodySchema.parse(await request.json());
     if (scope !== "market" && !entityId) return json({ error: "entityId required" }, { status: 400 });
     const next = await buildGraph({ scope, entityId, runId });

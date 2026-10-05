@@ -79,6 +79,29 @@ describe("driveRun (durable step loop)", () => {
     await expect(driveRun(step, "r1")).rejects.toBeInstanceOf(NonRetriableError);
   });
 
+  it("does not repeat a completed step when a later step is retried", async () => {
+    const memo = new Map<string, unknown>();
+    const executed: string[] = [];
+    const step = {
+      run: async (id: string, fn: () => Promise<unknown>) => {
+        if (memo.has(id)) return memo.get(id);
+        executed.push(id);
+        const value = await fn();
+        memo.set(id, value);
+        return value;
+      },
+      sleep: async () => undefined,
+    };
+    getRun.mockResolvedValue(row("running", "enriching"));
+    tickRun
+      .mockRejectedValueOnce(new IntegrationError("apollo", "rate_limit", "HTTP 429", 429))
+      .mockResolvedValueOnce(row("complete", "complete"));
+    await expect(driveRun(step as never, "r1")).rejects.toBeInstanceOf(IntegrationError);
+    await driveRun(step as never, "r1");
+    expect(executed.filter((id) => id === "load-run")).toEqual(["load-run"]);
+    expect(tickRun).toHaveBeenCalledTimes(2);
+  });
+
   it("waits instead of spinning when another worker holds the lease", async () => {
     getRun.mockResolvedValue(row("running", "scoring"));
     tickRun

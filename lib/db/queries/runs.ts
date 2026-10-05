@@ -1,5 +1,6 @@
 import "server-only";
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { sanitizeStoredError } from "@/lib/security/errors";
 import { getDb } from "@/lib/db";
 import { sourceRuns, type SourceRunProgress } from "@/lib/db/schema";
 
@@ -25,18 +26,27 @@ export async function getRun(id: string): Promise<RunRow | null> {
   return r ?? null;
 }
 
-/** Clear discovery/sourcing slots held by runs that never left queued (Inngest never picked them up). */
+const STALE_RUNNING_MS = 15 * 60 * 1000;
+
+/**
+ * Free a slot held by a run the worker no longer drives.
+ * Queued with no progress, or running whose lease expired and whose heartbeat (updatedAt) is old.
+ */
 export async function reclaimStaleActiveRun(eventId: string | null, kind: "lead_sourcing" | "event_discovery"): Promise<void> {
   const active = await findActiveRun(eventId, kind);
-  if (!active || active.status !== "queued") return;
+  if (!active) return;
   const ageMs = Date.now() - new Date(active.updatedAt).getTime();
-  const noProgress = !(active.progress?.steps?.length);
-  const stuck = (noProgress && ageMs > 90_000) || ageMs > 600_000;
-  if (!stuck) return;
-  await markRunFailed(
-    active.id,
-    "Previous run was stuck waiting for the job runner. It was reset — click Discover events again.",
-  );
+  if (active.status === "queued") {
+    const noProgress = !(active.progress?.steps?.length);
+    const stuck = (noProgress && ageMs > 90_000) || ageMs > 600_000;
+    if (!stuck) return;
+    await markRunFailed(active.id, "Previous run was stuck waiting for the job runner. It was reset — click Discover events again.");
+    return;
+  }
+  const leaseExpired = !active.leaseUntil || active.leaseUntil.getTime() < Date.now();
+  if ((active.status === "running" || active.status === "cancel_requested") && leaseExpired && ageMs > STALE_RUNNING_MS) {
+    await markRunFailed(active.id, "Previous run stopped making progress and was reset. Start it again.");
+  }
 }
 
 /** Active (queued/running) run for an event + kind, if any – prevents duplicate concurrent runs. */
@@ -106,11 +116,12 @@ export async function saveRun(
 export async function markRunFailed(id: string, message: string): Promise<void> {
   const run = await getRun(id);
   if (!run || isTerminal(run.status)) return;
+  const safe = sanitizeStoredError(message);
   const progress = run.progress ?? emptyProgress();
-  progress.steps.push({ at: new Date().toISOString(), stage: run.stage, message: `Run failed: ${message}`.slice(0, 500), level: "error" });
+  progress.steps.push({ at: new Date().toISOString(), stage: run.stage, message: `Run failed: ${safe}`.slice(0, 500), level: "error" });
   await getDb()
     .update(sourceRuns)
-    .set({ status: "failed", stage: "failed", error: message.slice(0, 1_000), completedAt: new Date(), leaseUntil: null, progress, updatedAt: new Date() })
+    .set({ status: "failed", stage: "failed", error: safe, completedAt: new Date(), leaseUntil: null, progress, updatedAt: new Date() })
     .where(eq(sourceRuns.id, id));
 }
 
@@ -145,7 +156,15 @@ export async function requestCancel(id: string): Promise<RunRow | null> {
 export async function reopenRun(id: string): Promise<RunRow | null> {
   const [row] = await getDb()
     .update(sourceRuns)
-    .set({ status: "queued", stage: "queued", error: null, completedAt: null, leaseUntil: null, updatedAt: new Date() })
+    .set({
+      status: "queued",
+      stage: "queued",
+      error: null,
+      completedAt: null,
+      leaseUntil: null,
+      dispatchGeneration: sql`${sourceRuns.dispatchGeneration} + 1`,
+      updatedAt: new Date(),
+    })
     .where(and(eq(sourceRuns.id, id), inArray(sourceRuns.status, ["failed", "cancelled"])))
     .returning();
   return row ?? null;

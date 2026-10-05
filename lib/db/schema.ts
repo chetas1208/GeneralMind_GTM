@@ -504,7 +504,10 @@ export const hubspotSyncs = pgTable(
     syncedAt: timestamp("synced_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("hubspot_syncs_lead_idx").on(t.eventLeadId)],
+  (t) => [
+    index("hubspot_syncs_lead_idx").on(t.eventLeadId),
+    uniqueIndex("hubspot_syncs_one_syncing_uq").on(t.eventLeadId).where(sql`${t.status} = 'syncing'`),
+  ],
 );
 
 export type SourceRunProgress = {
@@ -557,6 +560,8 @@ export const sourceRuns = pgTable(
     /** Null for event-discovery runs. */
     eventId: uuid("event_id").references(() => events.id, { onDelete: "cascade" }),
     kind: text("kind").notNull().default("lead_sourcing"), // lead_sourcing | event_discovery
+    /** Bumps when a failed run is reopened, so a retry is a new durable execution and a redelivery is not. */
+    dispatchGeneration: integer("dispatch_generation").notNull().default(1),
     status: runStatus("status").notNull().default("queued"),
     stage: runStage("stage").notNull().default("queued"),
 
@@ -579,6 +584,25 @@ export const sourceRuns = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("source_runs_event_idx").on(t.eventId), index("source_runs_status_idx").on(t.status)],
+);
+
+/** Server-side reviewer sessions. The cookie holds a signed id; logout sets revokedAt. */
+export const reviewerSessions = pgTable("reviewer_sessions", {
+  id: uuid("id").primaryKey(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Failed login attempts, keyed by a hash of the client address. Rows older than a day are deleted. */
+export const loginAttempts = pgTable(
+  "login_attempts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    keyHash: text("key_hash").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("login_attempts_key_idx").on(t.keyHash, t.createdAt)],
 );
 
 /** One row per UTC day. Written when scores change and when Radar loads, never by cron. */

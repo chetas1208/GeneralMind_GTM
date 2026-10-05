@@ -1,4 +1,5 @@
 import "server-only";
+import { untrustedBlock } from "@/lib/ai/untrusted";
 import { extractStructuredData } from "@/lib/ai/provider";
 import { acceptEvidenceIds, llmConfidenceSchema } from "./classify";
 import type { LlmConfidenceClassification } from "./types";
@@ -22,7 +23,10 @@ export async function classifyEvidence(input: {
     {
       system:
         "Classify evidence for a GTM claim. Do not invent a confidence percentage. Use only the evidence ids listed. If sources disagree, say so in contradictions. If a fact is not in the evidence, put it in missingEvidence.",
-      user: `Person: ${input.person}\nTitle: ${input.title ?? "unknown"}\nCompany: ${input.company ?? "unknown"}\nEvent: ${input.event}\nAttendance relationship: ${input.attendanceType}\n\nEVIDENCE:\n${listed || "(none)"}`,
+      user: untrustedBlock(
+        "evidence records",
+        `Person: ${input.person}\nTitle: ${input.title ?? "unknown"}\nCompany: ${input.company ?? "unknown"}\nEvent: ${input.event}\nAttendance relationship: ${input.attendanceType}\n\nEVIDENCE:\n${listed || "(none)"}`,
+      ),
       maxTokens: 500,
       temperature: 0.1,
     },

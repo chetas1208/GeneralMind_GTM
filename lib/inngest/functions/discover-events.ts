@@ -1,5 +1,6 @@
 import "server-only";
 import { markRunFailed } from "@/lib/db/queries/runs";
+import { sanitizeStoredError } from "@/lib/security/errors";
 import { inngest } from "../client";
 import { driveRun } from "../drive-run";
 import { eventsDiscoveryRequested } from "../events";
@@ -11,10 +12,10 @@ export const discoverEvents = inngest.createFunction(
     triggers: [eventsDiscoveryRequested],
     retries: 4,
     concurrency: 1,
-    idempotency: "event.data.dispatchId",
+    idempotency: "event.data.idempotencyKey",
     onFailure: async ({ event, error }) => {
       const runId = (event.data as { event?: { data?: { runId?: string } } }).event?.data?.runId;
-      if (runId) await markRunFailed(runId, error.message);
+      if (runId) await markRunFailed(runId, sanitizeStoredError(error.message));
     },
   },
   async ({ event, step }) => {

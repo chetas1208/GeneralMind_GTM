@@ -1,5 +1,6 @@
 import "server-only";
 import { chat } from "@/lib/ai/client";
+import { untrustedBlock } from "@/lib/ai/untrusted";
 import { isConfigured } from "@/lib/env";
 import type { MomentumDriver } from "./types";
 
@@ -25,7 +26,7 @@ export async function explainDrivers(drivers: MomentumDriver[], deltaPct: number
       chat({
         system:
           "Explain a GTM metric change in at most two sentences. Use only the contributors provided. Do not invent events, counts, or business outcomes.",
-        user: `Change versus the previous period: ${deltaPct == null ? "not enough history" : `${deltaPct}%`}.\nContributors:\n${facts}`,
+        user: untrustedBlock("metric contributors", `Change versus the previous period: ${deltaPct == null ? "not enough history" : `${deltaPct}%`}.\nContributors:\n${facts}`),
         maxTokens: 160,
         temperature: 0.2,
       }),

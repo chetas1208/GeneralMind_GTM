@@ -1,5 +1,6 @@
 import "server-only";
 import { acquireLease, createRun, findActiveRun, getRun, reclaimStaleActiveRun, type RunRow } from "@/lib/db/queries/runs";
+import { sanitizeStoredError } from "@/lib/security/errors";
 import { createLogger } from "@/lib/logger";
 import { RunContext, type StepHandler } from "./context";
 import { discoveryStep } from "./discovery";
@@ -58,7 +59,7 @@ export async function tickRun(runId: string, opts: { budgetMs?: number; rethrow?
       }
     }
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = sanitizeStoredError(e instanceof Error ? e.message : String(e));
     if (opts.rethrow) {
       ctx.note(`Step hit an error and will be retried: ${message}`.slice(0, 400), "warn");
       await ctx.save({ releaseLease: true }).catch(() => undefined);

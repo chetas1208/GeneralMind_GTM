@@ -46,9 +46,16 @@ export function json<T>(data: T, init?: ResponseInit) {
   return NextResponse.json(data, { ...init, headers: { "Cache-Control": "no-store", ...init?.headers } });
 }
 
+const MAX_BODY_CHARS = 32_000;
+
 export async function readJson(request: Request): Promise<unknown> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (Number.isFinite(declared) && declared > MAX_BODY_CHARS) throw new HttpError(413, "Request body is too large");
+  const text = await request.text();
+  if (text.length > MAX_BODY_CHARS) throw new HttpError(413, "Request body is too large");
+  if (!text) return {};
   try {
-    return await request.json();
+    return JSON.parse(text);
   } catch {
     return {};
   }

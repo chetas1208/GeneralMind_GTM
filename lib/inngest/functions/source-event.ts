@@ -1,5 +1,6 @@
 import "server-only";
 import { markRunFailed } from "@/lib/db/queries/runs";
+import { sanitizeStoredError } from "@/lib/security/errors";
 import { inngest } from "../client";
 import { driveRun } from "../drive-run";
 import { sourceEventRequested } from "../events";
@@ -15,10 +16,10 @@ export const sourceEvent = inngest.createFunction(
     triggers: [sourceEventRequested],
     retries: 4,
     concurrency: 2, // be kind to Exa / Firecrawl / Apollo / NVIDIA rate limits
-    idempotency: "event.data.dispatchId", // redelivery of the same dispatch is ignored; a retry gets a new dispatchId
+    idempotency: "event.data.idempotencyKey",
     onFailure: async ({ event, error }) => {
       const runId = (event.data as { event?: { data?: { runId?: string } } }).event?.data?.runId;
-      if (runId) await markRunFailed(runId, error.message);
+      if (runId) await markRunFailed(runId, sanitizeStoredError(error.message));
     },
   },
   async ({ event, step }) => {

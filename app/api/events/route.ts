@@ -6,10 +6,15 @@ import { inngest } from "@/lib/inngest/client";
 import { eventAssessRequested } from "@/lib/inngest/events";
 import { normalizeUrl } from "@/lib/text";
 
+const EVENT_STATUSES = ["discovered", "selected", "rejected", "archived"] as const;
+
 export async function GET(request: Request) {
   return handle(async () => {
+    await requireReviewer(request);
     const status = new URL(request.url).searchParams.get("status");
-    const statuses = status ? (status.split(",") as ("discovered" | "selected" | "rejected" | "archived")[]) : undefined;
+    const statuses = status
+      ? status.split(",").filter((s): s is (typeof EVENT_STATUSES)[number] => (EVENT_STATUSES as readonly string[]).includes(s))
+      : undefined;
     return json({ events: await listEvents({ statuses }) });
   });
 }

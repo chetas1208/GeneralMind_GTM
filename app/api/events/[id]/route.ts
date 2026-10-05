@@ -5,8 +5,9 @@ import { deleteEvent, eventDedupeKey, getEvent, listEventSources, updateEvent } 
 import { eventPatchSchema } from "@/lib/events/schemas";
 import { normalizeUrl } from "@/lib/text";
 
-export async function GET(_req: Request, ctx: RouteContext<"/api/events/[id]">) {
+export async function GET(request: Request, ctx: RouteContext<"/api/events/[id]">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid event id");
     const event = await getEvent(id);

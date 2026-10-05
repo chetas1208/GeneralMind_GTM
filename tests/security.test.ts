@@ -13,11 +13,14 @@ import { refreshCooldownRemainingMs, REFRESH_COOLDOWN_MS } from "@/lib/signals/c
 
 describe("session tokens", () => {
   it("accepts a freshly signed token and rejects tampering", async () => {
-    const token = await createSessionToken("secret-a");
+    const id = "11111111-1111-4111-8111-111111111111";
+    const token = await createSessionToken("secret-a", Date.now(), id);
     expect(await verifySessionToken(token, "secret-a")).toBe(true);
     expect(await verifySessionToken(token, "secret-b")).toBe(false);
-    const [exp, sig] = token.split(".");
-    expect(await verifySessionToken(`${Number(exp) + 99999}.${sig}`, "secret-a")).toBe(false);
+    const [sessionId, exp, sig] = token.split(".");
+    expect(sessionId).toBe(id);
+    expect(await verifySessionToken(`${sessionId}.${Number(exp) + 99999}.${sig}`, "secret-a")).toBe(false);
+    expect(await verifySessionToken(`${exp}.${sig}`, "secret-a")).toBe(false);
     expect(await verifySessionToken(undefined, "secret-a")).toBe(false);
     expect(await verifySessionToken("garbage", "secret-a")).toBe(false);
   });

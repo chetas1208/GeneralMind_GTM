@@ -5,8 +5,9 @@ import { HttpError, handle, isUuid, json, readJson } from "@/lib/api";
 import { getLeadDetail } from "@/lib/db/queries/leads";
 import { editLead } from "@/lib/services/review";
 
-export async function GET(_req: Request, ctx: RouteContext<"/api/leads/[id]">) {
+export async function GET(request: Request, ctx: RouteContext<"/api/leads/[id]">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid lead id");
     const detail = await getLeadDetail(id);

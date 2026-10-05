@@ -5,11 +5,11 @@ import { eventType, staticSchema } from "inngest";
  * content): Neon is the source of truth and each workflow re-reads what it needs.
  */
 export const sourceEventRequested = eventType("gtm/event.source.requested", {
-  schema: staticSchema<{ runId: string; eventId: string; requestedBy: string; dispatchId: string }>(),
+  schema: staticSchema<{ runId: string; eventId: string; requestedBy: string; dispatchId: string; idempotencyKey: string }>(),
 });
 
 export const eventsDiscoveryRequested = eventType("gtm/events.discovery.requested", {
-  schema: staticSchema<{ runId: string; requestedBy: string; dispatchId: string }>(),
+  schema: staticSchema<{ runId: string; requestedBy: string; dispatchId: string; idempotencyKey: string }>(),
 });
 
 export const eventAssessRequested = eventType("gtm/event.assess.requested", {

@@ -1,5 +1,6 @@
 import { desc, eq, ilike, or } from "drizzle-orm";
 import { handle, json } from "@/lib/api";
+import { requireReviewer } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { companies, events, people, signals } from "@/lib/db/schema";
 
@@ -8,7 +9,8 @@ export const dynamic = "force-dynamic";
 /** Global ⌘K search — people, companies, events only. */
 export async function GET(request: Request) {
   return handle(async () => {
-    const q = new URL(request.url).searchParams.get("q")?.trim() ?? "";
+    await requireReviewer(request);
+    const q = (new URL(request.url).searchParams.get("q")?.trim() ?? "").slice(0, 100);
     if (q.length < 2) return json({ people: [], companies: [], events: [], signals: [] });
 
     const pattern = `%${q}%`;

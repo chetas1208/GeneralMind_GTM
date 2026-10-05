@@ -50,6 +50,13 @@
       "when": 1791242339851,
       "tag": "0006_rare_ken_ellis",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791244000000,
+      "tag": "0007_security_hardening",
+      "breakpoints": true
     }
   ]
 }

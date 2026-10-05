@@ -24,12 +24,13 @@ export async function dispatchRun(run: RunRow, requestedBy = "operator"): Promis
     return { dispatched: false, error: "Inngest keys not set — advancing from the browser." };
   }
   const dispatchId = crypto.randomUUID();
+  const idempotencyKey = `${run.id}:${run.dispatchGeneration ?? 1}`;
   try {
     if (run.kind === "event_discovery") {
-      await inngest.send(eventsDiscoveryRequested.create({ runId: run.id, requestedBy, dispatchId }));
+      await inngest.send(eventsDiscoveryRequested.create({ runId: run.id, requestedBy, dispatchId, idempotencyKey }));
     } else {
       if (!run.eventId) throw new Error("Sourcing run has no event");
-      await inngest.send(sourceEventRequested.create({ runId: run.id, eventId: run.eventId, requestedBy, dispatchId }));
+      await inngest.send(sourceEventRequested.create({ runId: run.id, eventId: run.eventId, requestedBy, dispatchId, idempotencyKey }));
     }
     log.info("run dispatched", { runId: run.id, kind: run.kind });
     return { dispatched: true };

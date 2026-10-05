@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { HttpError } from "@/lib/api";
 import { getDb } from "@/lib/db";
 import { hubspotSyncs, people, reviewActions } from "@/lib/db/schema";
@@ -40,7 +40,11 @@ function assertTransition(action: ReviewAction, d: LeadDetail) {
 export async function approveLead(id: string, notes?: string | null) {
   const d = await mustGet(id);
   assertTransition("approve", d);
-  await updateLead(id, { status: "approved" });
+  const updated = await updateLead(id, { status: "approved" }, { expectedStatus: d.lead.status });
+  if (!updated) {
+    const again = await mustGet(id);
+    throw new HttpError(409, transitionError("approve", again.lead.status));
+  }
   await record(id, "approve", null, notes);
   log.info("lead approved", { leadId: id, from: d.lead.status });
   return mustGet(id);
@@ -49,7 +53,11 @@ export async function approveLead(id: string, notes?: string | null) {
 export async function rejectLead(id: string, reason: string, notes?: string | null) {
   const d = await mustGet(id);
   assertTransition("reject", d);
-  await updateLead(id, { status: "rejected" });
+  const updated = await updateLead(id, { status: "rejected" }, { expectedStatus: d.lead.status });
+  if (!updated) {
+    const again = await mustGet(id);
+    throw new HttpError(409, transitionError("reject", again.lead.status));
+  }
   await record(id, "reject", reason, notes);
   log.info("lead rejected", { leadId: id, reason, from: d.lead.status });
   return mustGet(id);
@@ -111,7 +119,23 @@ export async function pushLeadToHubspot(id: string): Promise<HubspotPushResult> 
 
   const db = getDb();
   const previous = d.syncs.find((s) => s.hubspotContactId || s.hubspotCompanyId);
-  const [row] = await db.insert(hubspotSyncs).values({ eventLeadId: id, status: "syncing" }).returning();
+  const staleBefore = new Date(Date.now() - 2 * 60_000);
+  await db
+    .update(hubspotSyncs)
+    .set({ status: "failed", error: "Sync lock expired" })
+    .where(and(eq(hubspotSyncs.eventLeadId, id), eq(hubspotSyncs.status, "syncing"), lt(hubspotSyncs.createdAt, staleBefore)));
+  let row: typeof hubspotSyncs.$inferSelect;
+  try {
+    const inserted = await db.insert(hubspotSyncs).values({ eventLeadId: id, status: "syncing" }).returning();
+    if (!inserted[0]) throw new HttpError(500, "Internal server error");
+    row = inserted[0];
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("23505") || /duplicate key|hubspot_syncs_one_syncing_uq/i.test(message)) {
+      throw new HttpError(409, "A HubSpot sync for this lead is already in progress");
+    }
+    throw e;
+  }
 
   try {
     const result = await syncLeadToHubspot({

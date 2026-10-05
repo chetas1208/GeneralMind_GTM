@@ -1,6 +1,7 @@
 import "server-only";
 import { createLogger } from "@/lib/logger";
 import { IntegrationError } from "@/lib/http";
+import { publicFetchUrl } from "@/lib/ssrf";
 import { firecrawlRequest } from "./client";
 import { firecrawlScrapeResponseSchema, type FirecrawlScrape } from "./schemas";
 
@@ -10,10 +11,12 @@ const MAX_MARKDOWN_CHARS = 60_000;
 
 /** Render + scrape a page to markdown. Use only when Exa content was insufficient. */
 export async function scrapePage(url: string, opts: { waitForMs?: number } = {}): Promise<FirecrawlScrape> {
+  const target = publicFetchUrl(url);
+  if (!target) throw new IntegrationError("firecrawl", "bad_request", "URL is not allowed");
   const res = await firecrawlRequest(
     "/scrape",
     {
-      url,
+      url: target,
       formats: ["markdown"],
       onlyMainContent: true,
       timeout: 45_000,

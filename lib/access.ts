@@ -32,17 +32,34 @@ async function hmacHex(secret: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function createSessionToken(secret: string, now = Date.now()): Promise<string> {
+const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type SessionClaims = { sessionId: string; expiresAt: number };
+
+/**
+ * Cookie value: `<sessionId>.<expiresAt>.<hex HMAC(AUTH_SECRET, "session:" + id + ":" + exp)>`.
+ * The id is random and stored server-side, so login always rotates the session and logout can revoke it.
+ * A token signed only with an expiry (the previous format) is rejected.
+ */
+export async function createSessionToken(secret: string, now = Date.now(), sessionId = crypto.randomUUID()): Promise<string> {
   const exp = Math.floor(now / 1000) + SESSION_TTL_SECONDS;
-  return `${exp}.${await hmacHex(secret, `session:${exp}`)}`;
+  return `${sessionId}.${exp}.${await hmacHex(secret, `session:${sessionId}:${exp}`)}`;
+}
+
+export async function readSessionClaims(token: string | undefined, secret: string, now = Date.now()): Promise<SessionClaims | null> {
+  if (!token) return null;
+  const [sessionId, expRaw, sig, extra] = token.split(".");
+  if (!sessionId || !expRaw || !sig || extra !== undefined) return null;
+  if (!SESSION_ID.test(sessionId) || !/^\d{1,12}$/.test(expRaw)) return null;
+  const expiresAt = Number(expRaw);
+  if (expiresAt * 1000 < now) return null;
+  const expected = await hmacHex(secret, `session:${sessionId}:${expRaw}`);
+  if (!safeEqual(sig, expected)) return null;
+  return { sessionId, expiresAt };
 }
 
 export async function verifySessionToken(token: string | undefined, secret: string, now = Date.now()): Promise<boolean> {
-  if (!token) return false;
-  const [expRaw, sig, extra] = token.split(".");
-  if (!expRaw || !sig || extra !== undefined || !/^\d{1,12}$/.test(expRaw)) return false;
-  if (Number(expRaw) * 1000 < now) return false;
-  return safeEqual(sig, await hmacHex(secret, `session:${expRaw}`));
+  return (await readSessionClaims(token, secret, now)) !== null;
 }
 
 /** Constant-time comparison of two secrets (digests are compared so length is not leaked). */

@@ -136,11 +136,13 @@ export async function updateLead(
     aiStatus: LeadRow["aiStatus"];
     aiError: string | null;
   }>,
+  opts?: { expectedStatus?: LeadStatus },
 ): Promise<LeadRow | null> {
+  const where = opts?.expectedStatus ? and(eq(eventLeads.id, id), eq(eventLeads.status, opts.expectedStatus)) : eq(eventLeads.id, id);
   const [row] = await getDb()
     .update(eventLeads)
     .set({ ...patch, updatedAt: new Date() })
-    .where(eq(eventLeads.id, id))
+    .where(where)
     .returning();
   return row ?? null;
 }

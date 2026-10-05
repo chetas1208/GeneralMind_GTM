@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ACCESS_COOKIE, isOpenDevMode, readAuthConfig, verifySessionToken } from "@/lib/access";
+import { ACCESS_COOKIE, isOpenDevMode, readAuthConfig, readSessionClaims } from "@/lib/access";
+import { sessionIsActive } from "@/lib/security/sessions";
 
 /**
  * Access gate (first line of defence; mutation handlers re-check via `requireReviewer`).
@@ -22,7 +23,8 @@ export async function proxy(request: NextRequest) {
 
   if (pathname === "/login" || pathname === "/api/auth/login") return NextResponse.next();
 
-  if (await verifySessionToken(request.cookies.get(ACCESS_COOKIE)?.value, auth.secret)) return NextResponse.next();
+  const claims = await readSessionClaims(request.cookies.get(ACCESS_COOKIE)?.value, auth.secret);
+  if (claims && (await sessionIsActive(claims.sessionId))) return NextResponse.next();
 
   if (isApi) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL("/login", request.url);

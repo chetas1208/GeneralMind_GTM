@@ -18,6 +18,7 @@ import {
   type QualificationExplanation,
 } from "./schemas";
 import { sanitizeText } from "@/lib/text";
+import { untrustedBlock } from "./untrusted";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -27,7 +28,7 @@ export function extractEventCandidate(page: { url: string; title?: string | null
     eventCandidateSchema,
     {
       system: prompts.eventCandidate(todayIso()).system,
-      user: `URL: ${page.url}\nTitle: ${page.title ?? ""}\n\nPAGE TEXT:\n${page.text.slice(0, 14_000)}`,
+      user: untrustedBlock("event page", `URL: ${page.url}\nTitle: ${page.title ?? ""}\n\n${page.text.slice(0, 14_000)}`),
       maxTokens: 1_500,
     },
     { label: "eventCandidate" },
@@ -44,7 +45,7 @@ export function analyzeEventRelevance(event: {
     eventAssessmentSchema,
     {
       system: prompts.eventAssessment().system,
-      user: `EVENT: ${event.name}\n${event.description ?? ""}\n\nSOURCE TEXT:\n${event.text.slice(0, 20_000)}`,
+      user: untrustedBlock("event sources", `EVENT: ${event.name}\n${event.description ?? ""}\n\n${event.text.slice(0, 20_000)}`),
       maxTokens: 1_200,
     },
     { label: "eventAssessment" },
@@ -61,7 +62,7 @@ export function extractParticipants(page: {
     participantsSchema,
     {
       system: prompts.participants(page.eventName, page.pageKind).system,
-      user: `PAGE TEXT:\n${page.text}`,
+      user: untrustedBlock("participant page", page.text),
       maxTokens: 4_000,
     },
     { label: "participants" },
@@ -91,7 +92,7 @@ export function summarizeCompanyFit(profile: {
     companyFitSummarySchema,
     {
       system: prompts.companyFit().system,
-      user: JSON.stringify({ ...profile, description: sanitizeText(profile.description ?? "").slice(0, 1_500), keywords: (profile.keywords ?? []).slice(0, 30) }),
+      user: untrustedBlock("company profile", JSON.stringify({ ...profile, description: sanitizeText(profile.description ?? "").slice(0, 1_500), keywords: (profile.keywords ?? []).slice(0, 30) })),
       maxTokens: 600,
     },
     { label: "companyFit" },
@@ -116,10 +117,13 @@ export function explainQualification(input: QualificationInput): Promise<Qualifi
     qualificationExplanationSchema,
     {
       system: prompts.qualification().system,
-      user: JSON.stringify(
-        { ...input, evidence: input.evidence.slice(0, 8).map((e) => ({ ...e, text: e.text.slice(0, 400) })) },
-        null,
-        1,
+      user: untrustedBlock(
+        "lead evidence",
+        JSON.stringify(
+          { ...input, evidence: input.evidence.slice(0, 8).map((e) => ({ ...e, text: e.text.slice(0, 400) })) },
+          null,
+          1,
+        ),
       ),
       maxTokens: 900,
     },
@@ -132,7 +136,7 @@ export function extractProfileRole(profile: { url: string; text: string }): Prom
     profileRoleSchema,
     {
       system: prompts.profileRole().system,
-      user: `URL: ${profile.url}\n\nPROFILE TEXT:\n${profile.text.slice(0, 5_000)}`,
+      user: untrustedBlock("profile page", `URL: ${profile.url}\n\n${profile.text.slice(0, 5_000)}`),
       maxTokens: 500,
     },
     { label: "profileRole" },
