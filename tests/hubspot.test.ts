@@ -75,3 +75,34 @@ describe("HubSpot sync (mocked HTTP boundary)", () => {
     expect(r.usedExtraProperties).toBe(false);
   });
 });
+
+describe("HubSpot sync — contacts without an email", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const noEmail = { ...lead, contact: { ...lead.contact, email: null, linkedinUrl: "https://www.linkedin.com/in/jane-smith-123" } };
+  const created = (calls: Call[]) => calls.find((c) => c.url.endsWith("/contacts") && c.method === "POST");
+  const propsOf = (c?: Call) => (c?.body as { properties: Record<string, string> }).properties;
+
+  it("sends the verified profile URL and never invents an email", async () => {
+    const calls = mockHubspot();
+    await syncLeadToHubspot(noEmail);
+    const p = propsOf(created(calls));
+    expect(p.hs_linkedin_url).toBe("https://www.linkedin.com/in/jane-smith-123");
+    expect(p.email).toBeUndefined();
+  });
+
+  it("keeps the profile URL when the portal rejects the GeneralMind custom properties", async () => {
+    const calls = mockHubspot({ rejectCustomProps: true });
+    await syncLeadToHubspot(noEmail);
+    const ok = calls.filter((c) => c.url.endsWith("/contacts") && c.method === "POST").at(-1);
+    expect(propsOf(ok).hs_linkedin_url).toBeDefined();
+    expect(Object.keys(propsOf(ok)).some((k) => k.startsWith("generalmind_"))).toBe(false);
+  });
+
+  it("refuses to send non-LinkedIn, non-https or non-profile URLs", async () => {
+    for (const bad of ["http://www.linkedin.com/in/x", "https://evil.example/in/x", "https://www.linkedin.com/company/acme", "javascript:alert(1)"]) {
+      const calls = mockHubspot();
+      await syncLeadToHubspot({ ...noEmail, contact: { ...noEmail.contact, linkedinUrl: bad } });
+      expect(propsOf(created(calls)).hs_linkedin_url, bad).toBeUndefined();
+    }
+  });
+});

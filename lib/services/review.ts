@@ -133,6 +133,7 @@ export async function pushLeadToHubspot(id: string): Promise<HubspotPushResult> 
         lastName: d.person.lastName,
         jobTitle: d.person.title,
         companyName: d.company?.name,
+        linkedinUrl: d.person.linkedinUrl,
         extra: {
           generalmind_source_event: d.event.name,
           generalmind_lead_score: String(d.lead.totalScore),

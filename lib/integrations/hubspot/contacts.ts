@@ -67,6 +67,16 @@ function baseProperties(input: HubspotContactInput): Record<string, string> {
   return p;
 }
 
+/** Only a real https LinkedIn profile URL is ever sent to the CRM. */
+function linkedinProperty(url: string | null | undefined): Record<string, string> {
+  try {
+    const u = new URL(url ?? "");
+    return u.protocol === "https:" && /(^|\.)linkedin\.com$/i.test(u.hostname) && u.pathname.startsWith("/in/") ? { hs_linkedin_url: u.toString() } : {};
+  } catch {
+    return {};
+  }
+}
+
 const isPropertyError = (e: unknown) =>
   e instanceof IntegrationError &&
   e.status === 400 &&
@@ -87,8 +97,8 @@ export async function upsertContact(
   }
 
   const base = baseProperties(input);
-  const withExtra = { ...base, ...(input.extra ?? {}) };
-  const hasExtra = Boolean(input.extra && Object.keys(input.extra).length);
+  const linkedin = linkedinProperty(input.linkedinUrl);
+  const extra = input.extra ?? {};
 
   const write = async (properties: Record<string, string>) =>
     id
@@ -105,16 +115,24 @@ export async function upsertContact(
           schema: hubspotObjectSchema,
         });
 
-  try {
-    const res = await write(hasExtra ? withExtra : base);
-    log.info(id ? "contact updated" : "contact created", { id: res.id });
-    return { id: res.id, created: !id, usedExtraProperties: hasExtra };
-  } catch (e) {
-    if (hasExtra && isPropertyError(e)) {
-      log.warn("custom properties rejected; retrying with standard properties");
-      const res = await write(base);
-      return { id: res.id, created: !id, usedExtraProperties: false };
+  // Richest first; each step drops the optional properties a portal might not have.
+  const attempts: Array<{ props: Record<string, string>; usedExtra: boolean }> = [
+    { props: { ...base, ...linkedin, ...extra }, usedExtra: Object.keys(extra).length > 0 },
+    { props: { ...base, ...linkedin }, usedExtra: false },
+    { props: base, usedExtra: false },
+  ].filter((a, i, arr) => i === 0 || Object.keys(a.props).length < Object.keys(arr[i - 1].props).length);
+
+  let lastError: unknown;
+  for (const attempt of attempts) {
+    try {
+      const res = await write(attempt.props);
+      log.info(id ? "contact updated" : "contact created", { id: res.id });
+      return { id: res.id, created: !id, usedExtraProperties: attempt.usedExtra };
+    } catch (e) {
+      if (!isPropertyError(e)) throw e;
+      log.warn("optional contact properties rejected; retrying with fewer properties");
+      lastError = e;
     }
-    throw e;
   }
+  throw lastError;
 }
