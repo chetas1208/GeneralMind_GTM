@@ -9,6 +9,7 @@ import { enrichPerson } from "@/lib/integrations/apollo/enrichment";
 import { classifyTitle } from "@/lib/scoring/persona-score";
 import { getIntelligenceBudget } from "@/lib/intelligence/budget";
 import { isNegativePersona } from "@/lib/icp/exclusions";
+import { resolveContactRoute } from "@/lib/services/contact-route";
 import { computeLeadScore } from "../scoring";
 import type { RunContext } from "../context";
 import { EVIDENCE_CONFIDENCE } from "./shared";
@@ -32,14 +33,8 @@ export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<
   ctx.setStage("enriching");
   const c = ctx.cursor;
 
-  if (!isConfigured("APOLLO_API_KEY")) {
-    ctx.note("Apollo is not configured – person enrichment skipped", "warn");
-    return true;
-  }
-  if (ctx.counters.apolloPeopleUnavailable) {
-    ctx.note("Person enrichment skipped: Apollo People Match is not included in this plan. Emails are left empty rather than guessed.", "warn");
-    return true;
-  }
+  // Without Apollo people data (key missing or plan lacks People Match) use verified public profiles.
+  if (!isConfigured("APOLLO_API_KEY") || ctx.counters.apolloPeopleUnavailable) return runWebContactRoutes(ctx, event);
 
   if (!c.enrichQueue) {
     const budget = getIntelligenceBudget();
@@ -115,9 +110,49 @@ export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<
   });
   if (planBlocked) {
     ctx.counters.apolloPeopleUnavailable = true;
-    ctx.note("Apollo People Match is not included in this plan – stopping enrichment", "warn");
-    return true;
+    ctx.note("Apollo People Match is not included in this plan – switching to verified public-profile contact routes", "warn");
+    c.enrichQueue = undefined;
+    return false;
   }
+  c.enrichDone = start + batch.length;
+  return (c.enrichDone ?? 0) >= queue.length;
+}
+
+/**
+ * Contact routes without a paid people-data provider: for the strongest leads, find a public
+ * profile and accept it only after deterministic verification (see `verifyProfile`).
+ * No emails are guessed; leads without a verified route simply have none.
+ */
+async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<boolean> {
+  const c = ctx.cursor;
+  if (!c.enrichQueue) {
+    const budget = getIntelligenceBudget();
+    const rows = await listEventLeadRows(event.id);
+    const evidence = await listEvidenceForLeads(rows.map((r) => r.lead.id));
+    const ranked = rows
+      .filter((r) => r.company && !r.person.linkedinUrl && !r.person.email && !isNegativePersona(r.person.title))
+      .map((r) => ({ id: r.lead.id, prelim: computeLeadScore({ lead: r.lead, person: r.person, company: r.company, evidence: evidence.get(r.lead.id) ?? [], event }).total }))
+      .filter((r) => r.prelim >= MIN_PRELIM_SCORE)
+      .sort((a, b) => b.prelim - a.prelim)
+      .slice(0, budget.maxEnrichmentsPerEvent);
+    c.enrichQueue = ranked.map((r) => r.id);
+    c.enrichDone = 0;
+    ctx.counters.enrichTarget = ranked.length;
+    ctx.note(`Contact routes via verified public profiles: ${ranked.length} leads (pre-score ≥ ${MIN_PRELIM_SCORE}). Work emails are not guessed.`);
+  }
+
+  const queue = c.enrichQueue ?? [];
+  const start = c.enrichDone ?? 0;
+  const batch = queue.slice(start, start + PER_STEP);
+  const outcomes = await mapSettled(batch, 2, async (leadId) => {
+    const res = await resolveContactRoute(leadId);
+    if (res?.status === "found") ctx.counts.peopleEnriched += 1;
+    return res?.status === "found" ? `${leadId.slice(0, 8)}: verified public profile attached` : `${leadId.slice(0, 8)}: no verified profile (${res?.status ?? "missing"})`;
+  });
+  outcomes.forEach((o, i) => {
+    if (!o.ok) ctx.note(`Contact route failed for lead ${batch[i].slice(0, 8)}: ${o.error instanceof Error ? o.error.message.slice(0, 160) : String(o.error)}`, "warn");
+    else ctx.note(o.value);
+  });
   c.enrichDone = start + batch.length;
   return (c.enrichDone ?? 0) >= queue.length;
 }

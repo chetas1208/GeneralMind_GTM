@@ -31,7 +31,7 @@ const OPTIONAL_COLS: { key: ColKey; label: string }[] = [
   { key: "event", label: "Event" },
   { key: "industry", label: "Industry" },
   { key: "persona", label: "Persona" },
-  { key: "email", label: "Email" },
+  { key: "email", label: "Contact" },
   { key: "fit", label: "Fit breakdown" },
 ];
 
@@ -241,7 +241,7 @@ export function LeadsWorkbench({
                   {cols.event && <th className="px-3 py-2 font-medium">Event</th>}
                   {cols.industry && <th className="px-3 py-2 font-medium">Industry</th>}
                   {cols.persona && <th className="px-3 py-2 font-medium">Persona</th>}
-                  {cols.email && <th className="px-3 py-2 font-medium">Email</th>}
+                  {cols.email && <th className="px-3 py-2 font-medium">Contact</th>}
                   {cols.fit && <th className="px-3 py-2 font-medium">Fit</th>}
                   <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
@@ -277,7 +277,7 @@ export function LeadsWorkbench({
                       {cols.event && <td className="px-3 py-2 text-xs">{l.event.name}</td>}
                       {cols.industry && <td className="px-3 py-2 text-xs text-muted-foreground">{l.company?.industry ?? "—"}</td>}
                       {cols.persona && <td className="px-3 py-2 text-xs">{l.person.persona ?? "—"}</td>}
-                      {cols.email && <td className="px-3 py-2 text-xs">{l.person.email ?? "—"}</td>}
+                      {cols.email && <td className="px-3 py-2 text-xs">{l.person.email ?? (l.person.linkedinUrl ? "LinkedIn" : "—")}</td>}
                       {cols.fit && (
                         <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
                           {l.companyFitScore}·{l.personaFitScore}·{l.intentScore}

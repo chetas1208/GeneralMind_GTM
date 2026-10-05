@@ -1,5 +1,6 @@
 "use client";
 
+import { FindContactRoute } from "@/components/leads/find-contact-route";
 import Link from "next/link";
 import { CheckCircle2, ExternalLink, HelpCircle } from "lucide-react";
 import { ScoreBadge } from "@/components/gtm/badges";
@@ -255,41 +256,43 @@ export function LeadDetailView({
         </ul>
       </section>
 
-      {(person.email || person.linkedinUrl || person.location) && (
-        <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</h3>
-          <dl className="space-y-1 text-[13px]">
-            {person.email && (
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact route</h3>
+        <dl className="space-y-1 text-[13px]">
+          <dt className="text-muted-foreground">Work email</dt>
+          <dd>
+            {person.email ?? <span className="text-muted-foreground">Not available — never guessed</span>}
+          </dd>
+          <dt className="text-muted-foreground">Public profile</dt>
+          <dd>
+            {person.linkedinUrl ? (
               <>
-                <dt className="text-muted-foreground">Work email</dt>
-                <dd>{person.email}</dd>
+                <a href={safeHref(person.linkedinUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
+                  LinkedIn
+                </a>
+                <span className="ml-2 text-[11px] text-muted-foreground">verified against the profile text</span>
+              </>
+            ) : (
+              <>
+                <span className="text-muted-foreground">Not found yet</span>
+                <FindContactRoute leadId={lead.id} />
               </>
             )}
-            {person.linkedinUrl && (
-              <>
-                <dt className="text-muted-foreground">Profile</dt>
-                <dd>
-                  <a href={safeHref(person.linkedinUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
-                    LinkedIn
-                  </a>
-                </dd>
-              </>
-            )}
-            {person.location && (
-              <>
-                <dt className="text-muted-foreground">Location</dt>
-                <dd>{person.location}</dd>
-              </>
-            )}
-            {person.seniority && (
-              <>
-                <dt className="text-muted-foreground">Seniority</dt>
-                <dd>{humanize(person.seniority)}</dd>
-              </>
-            )}
-          </dl>
-        </section>
-      )}
+          </dd>
+          {person.location && (
+            <>
+              <dt className="text-muted-foreground">Location</dt>
+              <dd>{person.location}</dd>
+            </>
+          )}
+          {person.seniority && (
+            <>
+              <dt className="text-muted-foreground">Seniority</dt>
+              <dd>{humanize(person.seniority)}</dd>
+            </>
+          )}
+        </dl>
+      </section>
 
       {company && (
         <section>
