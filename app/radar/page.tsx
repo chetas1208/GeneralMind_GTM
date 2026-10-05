@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { DiscoverEventsButton, RefreshIntelligenceButton, SourceLeadsButton } from "@/components/gtm/action-buttons";
+import { RadarViewTabs } from "@/components/radar/radar-view-tabs";
 import { SignalRadar } from "@/components/radar/signal-radar";
 import { RunProgress } from "@/components/gtm/run-progress";
 import { listEvents } from "@/lib/db/queries/events";
@@ -64,7 +66,12 @@ export default async function RadarPage() {
 
       {activeDiscovery && <RunProgress initial={toRunDto(activeDiscovery)} compact />}
 
-      <SignalRadar events={JSON.parse(JSON.stringify(selected))} />
+      <Suspense fallback={<p className="text-sm text-muted-foreground">Loading view…</p>}>
+        <RadarViewTabs
+          activeRunId={activeDiscovery?.id}
+          table={<SignalRadar events={JSON.parse(JSON.stringify(selected))} />}
+        />
+      </Suspense>
 
       {(topAccounts.length > 0 || topOpps.length > 0) && (
         <section className="space-y-2">

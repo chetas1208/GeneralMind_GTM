@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarDays, ExternalLink, MapPin } from "lucide-react";
 import { EventStatusButtons, SourceLeadsButton } from "@/components/gtm/action-buttons";
+import { EventGraphPanel } from "@/components/events/event-graph-panel";
 import { EventTabBar, parseEventTab } from "@/components/events/event-tab-bar";
 import { ScoreBadge, StatusPill, Tag } from "@/components/gtm/badges";
 import { signalLabel } from "@/lib/gtm-present";
@@ -282,6 +283,15 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {tab === "graph" && (
+        <section className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Live intelligence graph for this event — companies, people, evidence, and opportunities sourced from Neon.
+          </p>
+          <EventGraphPanel eventId={event.id} runId={activeRun?.id} />
         </section>
       )}
     </div>

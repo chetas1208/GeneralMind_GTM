@@ -62,11 +62,11 @@ Plain-text version: `SIGNAL → ACCOUNT → PERSON → EVIDENCE → OPPORTUNITY 
 
 | Surface | Purpose |
 | --- | --- |
-| **Radar** (`/radar`) | Market signal radar: top opportunities by account priority, upcoming events, recent signals, *Refresh intelligence*. |
+| **Radar** (`/radar`) | Market signal radar: top opportunities by account priority, upcoming events, recent signals, *Refresh intelligence*. Toggle **Table \| Graph** for a live intelligence graph of market relationships. |
 | **Leads** (`/leads`) | Review queue with search and filters (event, persona, industry, score, attendance). Lead detail shows the score breakdown, attendance statement, evidence, notes and approve / reject / push-to-CRM. |
 | **Pipeline** (`/pipeline`) | Leads by review state and live run activity. |
 | Account (`/accounts/[id]`) | Fit and priority, *why now*, signal timeline, likely workflows, relevant people. Opened from Radar, Leads and search. |
-| Event (`/events/[id]`) | Why the event matters, participants, companies, source evidence. |
+| Event (`/events/[id]`) | Why the event matters, participants, companies, source evidence, and an event-scoped **Graph** tab. |
 | `/system` | Developer diagnostics: integration health and signal-engine counters. Not in the main navigation. |
 
 Provider names (Exa, Firecrawl, …) are intentionally absent from the product UI.
@@ -212,6 +212,16 @@ Leads ≥ 55 enter the review queue. Every factor stores its points and a note, 
 | Contactability | 5 |
 
 Negative signals subtract. The breakdown is stored on the account and rendered so *"why is this 69?"* is answerable line by line.
+
+## Live Intelligence Graph
+
+Radar projects relational intelligence into an interactive provenance graph. The graph shows how market signals, events, companies, people, evidence, workflows, and opportunities connect — derived from Neon at request time (no separate graph database).
+
+- **Renderer:** [@xyflow/react](https://reactflow.dev/) with custom nodes/edges and Dagre hierarchical layout.
+- **Scopes:** market (Radar), event, company, and opportunity (lead trace).
+- **Verified vs inferred:** solid edges are verified relationships; dashed edges are inference (filter with *Verified* on the graph toolbar).
+- **Trace:** on a lead, the intelligence trace highlights the backward path from opportunity to evidence and signals.
+- **Live sourcing:** while a source run is active, the graph polls for incremental node/edge deltas and preserves layout for existing nodes.
 
 ## Evidence + provenance
 

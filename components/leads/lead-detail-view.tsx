@@ -16,6 +16,7 @@ import {
 } from "@/lib/gtm-present";
 import { formatDateRange, formatRelative, humanize } from "@/lib/format";
 import { ATTENDANCE_LABEL, CONFIRMED_ATTENDANCE } from "@/lib/scoring/config";
+import { LeadTraceGraph } from "@/components/leads/lead-trace-graph";
 import { ProvenancePath } from "@/components/leads/provenance-path";
 import { workflowLabel } from "@/lib/icp/workflows";
 import { cn } from "@/lib/utils";
@@ -152,6 +153,8 @@ export function LeadDetailView({
         attendanceType={lead.attendanceType}
         topEvidenceType={evidence[0]?.sourceType}
       />
+
+      <LeadTraceGraph leadId={lead.id} />
 
       {lead.opportunityHypothesis && lead.opportunityHypothesis.workflows.length > 0 && (
         <section>

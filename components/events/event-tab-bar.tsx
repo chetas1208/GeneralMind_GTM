@@ -6,6 +6,7 @@ const TABS = [
   { key: "companies", label: "Companies" },
   { key: "people", label: "People" },
   { key: "evidence", label: "Evidence" },
+  { key: "graph", label: "Graph" },
 ] as const;
 
 export type EventTabKey = (typeof TABS)[number]["key"];
@@ -30,6 +31,6 @@ export function EventTabBar({ eventId, active }: { eventId: string; active: Even
 }
 
 export function parseEventTab(raw: string | undefined): EventTabKey {
-  if (raw === "companies" || raw === "people" || raw === "evidence") return raw;
+  if (raw === "companies" || raw === "people" || raw === "evidence" || raw === "graph") return raw;
   return "overview";
 }
