@@ -9,7 +9,7 @@ const STAGES = [
   { n: "B", name: "Extract participants", how: "Official speaker / sponsor / exhibitor / agenda pages scraped; names accepted only if they literally appear in the page text", tool: "Firecrawl · Exa · Nemotron" },
   { n: "C", name: "Qualify companies", how: "Domain resolved, firmographics enriched, deterministic company-fit score", tool: "Exa · Apollo" },
   { n: "D", name: "Find people", how: "Named speakers + target personas at qualified companies; public role claims need a verbatim quote that is verified in the source", tool: "Apollo · Exa" },
-  { n: "E", name: "Enrich", how: "Top candidates only (credit-conservative); no phone numbers, no personal emails", tool: "Apollo" },
+  { n: "E", name: "Enrich / contact route", how: "Top candidates only. Apollo when the plan allows it; otherwise a public profile attached only after deterministic name, employer and current-role checks. No phone numbers, no guessed emails", tool: "Apollo · Exa" },
   { n: "F", name: "Score", how: `Pure TypeScript, version ${SCORING_VERSION}: company 40 + persona 30 + intent 30. Rerun-safe.`, tool: "Code" },
   { n: "G", name: "Explain", how: "Model writes a grounded explanation after the score is final; a guard rewrites any unsupported attendance claim", tool: "Nemotron" },
 ];
@@ -20,7 +20,7 @@ const GUARDRAILS = [
   ["Evidence is built by code", "Snippets are cut from retrieved source text, hashed for dedupe, and stored with URL + retrieval time. The model cannot supply a citation."],
   ["Schema-validated AI", "Every model response is parsed with Zod; one repair retry, then the item is marked failed and the source data is kept."],
   ["Humans gate the CRM", `Only reviewed and approved leads (score ≥ ${LEAD_QUALIFY_THRESHOLD} to enter the queue) can be pushed to HubSpot; the upsert is idempotent and records every attempt.`],
-  ["Failures are recorded, not hidden", "Rate limits, plan limits and provider errors are stored on the run and shown in the UI. Apollo Free-plan limits degrade the pipeline visibly."],
+  ["Failures are recorded, not hidden", "Rate limits, plan limits and provider errors are stored on the run and shown in the UI. Apollo plan limits degrade the pipeline visibly and switch it to verified public profiles."],
 ];
 
 export default function ArchitecturePage() {

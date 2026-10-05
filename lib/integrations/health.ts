@@ -94,7 +94,7 @@ const checks: Check[] = [
           return {
             status: "degraded",
             detail:
-              "Authenticated · organization enrichment works, but People Search / Match are NOT included in this Apollo plan. Persona discovery falls back to event evidence + web search; emails stay empty.",
+              "Company enrichment live. People Search / Match are not in this Apollo plan, so contacts come from event evidence plus verified public profiles; work emails are left empty, never guessed.",
           };
         }
         throw e;
