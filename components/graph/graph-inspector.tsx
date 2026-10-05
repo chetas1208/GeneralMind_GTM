@@ -35,12 +35,17 @@ export function GraphInspector({
       )}
       {edge && (
         <div className="space-y-1">
-          <p className="font-medium capitalize">{edge.type.replace(/_/g, " ")}</p>
+          <p className="font-medium">{edge.label ?? edge.type.replace(/_/g, " ")}</p>
           <p className="text-muted-foreground">
-            {edge.verification === "verified" ? "Verified relationship" : "Inferred relationship"}
-            {edge.confidence != null ? ` · ${edge.confidence}% confidence` : ""}
+            {edge.verification === "verified" ? "Direct or official relationship" : "Inferred relationship"}
           </p>
           {edge.explanation && <p className="text-muted-foreground">{edge.explanation}</p>}
+          {edge.confidence != null && (
+            <details className="text-muted-foreground">
+              <summary className="cursor-pointer">Details</summary>
+              <p className="mt-1">Internal ranking aid: {(edge.confidence / 100).toFixed(2)}</p>
+            </details>
+          )}
         </div>
       )}
     </aside>

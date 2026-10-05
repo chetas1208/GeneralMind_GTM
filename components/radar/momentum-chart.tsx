@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { InfoHint } from "@/components/ui/info-hint";
+import { MetricInfo } from "@/components/ui/metric-info";
 import type { MomentumPoint, MomentumSeries } from "@/lib/analytics/types";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +21,7 @@ export function MomentumChart({ series }: { series: MomentumSeries }) {
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <h2 className="text-sm font-semibold">Opportunity momentum</h2>
-          <InfoHint label="About momentum">
-            Measures the strength of active opportunities using priority, evidence and freshness.
-          </InfoHint>
+          <MetricInfo metric="momentum" />
         </div>
         <div className="flex gap-1 text-[11px]">
           {METRICS.map((m) => (

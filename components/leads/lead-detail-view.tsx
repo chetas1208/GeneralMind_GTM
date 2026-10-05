@@ -6,9 +6,11 @@ import { CheckCircle2, ExternalLink, HelpCircle } from "lucide-react";
 import { ScoreBadge } from "@/components/gtm/badges";
 import { ReviewPanel } from "@/components/gtm/review-actions";
 import { SectionBreakdown, type ScoreSection } from "@/components/gtm/score-breakdown";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { MetricInfo } from "@/components/ui/metric-info";
+import { assessConfidence, fitBand } from "@/lib/confidence";
 import {
   activityLabel,
-  confidencePresentation,
   emailPresentation,
   evidenceSourceLabel,
   evidenceStrength,
@@ -42,6 +44,11 @@ export type LeadDetailDto = {
     aiError: string | null;
     priorityScore: number;
     signalFrequency: number;
+    confidenceAssessment?: {
+      narrative?: { whyNow?: string; whyGeneralMind?: string; discoveryAngle?: string; evidenceIds?: string[] };
+      previousBand?: string | null;
+      changeReason?: string | null;
+    } | null;
     opportunityHypothesis: {
       workflows: string[];
       rationale: string;
@@ -114,7 +121,26 @@ export function LeadDetailView({
 }) {
   const { lead, person, company, event, evidence, reviews, syncs } = detail;
   const confirmed = CONFIRMED_ATTENDANCE.has(lead.attendanceType as never);
-  const conf = confidencePresentation(lead.attendanceType, lead.attendanceConfidence);
+  const assessment = assessConfidence({
+    kind: "attendance",
+    attendanceType: lead.attendanceType,
+    sourceTypes: evidence.map((e) => e.sourceType),
+    independentSources: new Set(evidence.map((e) => e.sourceType)).size,
+    retrievedAt: evidence[0]?.retrievedAt ?? null,
+    identity: { roleVerified: Boolean(person.enrichedAt) },
+    completeness: {
+      person: Boolean(person.fullName),
+      title: Boolean(person.title),
+      company: Boolean(company?.name),
+      event: Boolean(event.name),
+      source: evidence.length > 0,
+      date: Boolean(event.startDate),
+    },
+    allowedEvidenceIds: evidence.map((e) => e.id),
+    previousBand: (lead.confidenceAssessment?.previousBand ?? null) as import("@/lib/confidence").ConfidenceBand | null,
+  });
+  const narrative = lead.confidenceAssessment?.narrative;
+  const grounded = (narrative?.evidenceIds?.length ?? 0) > 0;
   const latestSync = syncs[0] ?? null;
   const qual = lead.qualificationDetail;
   const breakdown = lead.scoreBreakdown;
@@ -129,7 +155,10 @@ export function LeadDetailView({
             <p className="text-muted-foreground">{person.title ?? "Role unknown"}</p>
             <p className="font-medium">{company?.name ?? "Unknown company"}</p>
           </div>
-          <ScoreBadge score={lead.totalScore} size="lg" />
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Priority</p>
+            <ScoreBadge score={lead.priorityScore} size="lg" metric="priority" />
+          </div>
         </div>
         <p className="text-xs text-muted-foreground">
           {signalLabel(lead.attendanceType)} ·{" "}
@@ -138,13 +167,11 @@ export function LeadDetailView({
           </Link>
           {event.startDate && ` · ${formatDateRange(event.startDate, event.endDate)}`}
         </p>
-        <p className="text-xs">
-          <span className={cn("font-medium", conf.tier === "Confirmed" ? "text-emerald-400" : "text-amber-400/90")}>
-            {conf.tier}
-          </span>
-          <span className="text-muted-foreground"> · {conf.detail}</span>
-          <span className="ml-2 text-muted-foreground">· {leadStatusLabel(lead.status)}</span>
-        </p>
+        <div className="flex flex-wrap items-start gap-x-3 gap-y-1 text-xs">
+          <span className="text-muted-foreground">Evidence confidence</span>
+          <ConfidenceBadge assessment={assessment} />
+          <span className="text-muted-foreground">· {leadStatusLabel(lead.status)}</span>
+        </div>
       </header>
 
       <ProvenancePath
@@ -170,7 +197,8 @@ export function LeadDetailView({
             ))}
           </ul>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            {lead.opportunityHypothesis.classification === "evidence_backed" ? "Evidence-backed" : lead.opportunityHypothesis.classification === "strong_inference" ? "Strong inference" : "Speculative"} · priority {lead.priorityScore}
+            {lead.opportunityHypothesis.classification === "evidence_backed" ? "Evidence-backed" : lead.opportunityHypothesis.classification === "strong_inference" ? "Strong inference" : "Speculative"}{" "}
+            <MetricInfo metric="priority" value={lead.priorityScore} />
             {lead.signalFrequency > 1 ? ` · seen on ${lead.signalFrequency} relevant events` : ""}
           </p>
         </section>
@@ -183,6 +211,15 @@ export function LeadDetailView({
             : `${person.fullName}'s personal attendance is not confirmed. Evidence shows ${company?.name ?? "the company"}'s relationship to the event, not that this individual will attend.`}
         </p>
       </section>
+
+      {grounded && narrative && (
+        <section>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why now</h3>
+          {narrative.whyNow && <p className="text-[13px] leading-relaxed">{narrative.whyNow}</p>}
+          {narrative.whyGeneralMind && <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">{narrative.whyGeneralMind}</p>}
+          {narrative.discoveryAngle && <p className="mt-2 text-xs text-muted-foreground">{narrative.discoveryAngle}</p>}
+        </section>
+      )}
 
       {(lead.qualificationReason || qual) && (
         <section>
@@ -213,11 +250,12 @@ export function LeadDetailView({
         <section>
           <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Score</h3>
           <div className="space-y-2 rounded-lg border bg-card/50 p-3 font-mono text-[12px] tabular-nums">
-            <Row label="Company fit" value={breakdown.company.total} max={breakdown.company.max} />
-            <Row label="Person fit" value={breakdown.persona.total} max={breakdown.persona.max} />
-            <Row label="Intent" value={breakdown.intent.total} max={breakdown.intent.max} />
+            <Row label="Company fit" value={fitBand(breakdown.company.total, breakdown.company.max)} metric="companyFit" internal={breakdown.company.total / breakdown.company.max} />
+            <Row label="Persona fit" value={fitBand(breakdown.persona.total, breakdown.persona.max)} metric="personaFit" internal={breakdown.persona.total / breakdown.persona.max} />
+            <Row label="Signal strength" value={fitBand(breakdown.intent.total, breakdown.intent.max)} metric="signalStrength" internal={breakdown.intent.total / breakdown.intent.max} />
             <div className="border-t border-border/60 pt-2 font-semibold">
-              Total {lead.totalScore} / 100
+              Priority {lead.priorityScore}
+              <MetricInfo metric="priority" value={lead.priorityScore} />
             </div>
           </div>
           <details className="mt-2">
@@ -245,7 +283,7 @@ export function LeadDetailView({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{evidenceSourceLabel(e.sourceType)}</span>
-                    <span className="text-[11px] text-muted-foreground">{evidenceStrength(e.confidence)}</span>
+                    <span className="text-[11px] text-muted-foreground">{evidenceStrength(e.sourceType)}</span>
                   </div>
                   <p className="mt-1 text-muted-foreground">{e.evidenceText}</p>
                   {e.sourceUrl && (
@@ -354,12 +392,13 @@ export function LeadDetailView({
   );
 }
 
-function Row({ label, value, max }: { label: string; value: number; max: number }) {
+function Row({ label, value, metric, internal }: { label: string; value: string; metric: "companyFit" | "personaFit" | "signalStrength"; internal: number }) {
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span>
-        {value} / {max}
+      <span className="inline-flex items-center gap-1 font-sans">
+        {value}
+        <MetricInfo metric={metric} display={value} internal={internal} />
       </span>
     </div>
   );

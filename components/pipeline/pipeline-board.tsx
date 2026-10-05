@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ScoreBadge } from "@/components/gtm/badges";
-import { signalLabel } from "@/lib/gtm-present";
+import { confidencePresentation, signalLabel } from "@/lib/gtm-present";
 import type { LeadListItem } from "@/lib/db/queries/leads";
 
 type Col = { status: string; label: string; count: number; items: LeadListItem[] };
@@ -26,11 +26,13 @@ export function PipelineBoard({ columns }: { columns: Col[] }) {
                 <li key={l.id}>
                   <Link href={`/leads?lead=${l.id}`} className="block px-3 py-2.5 hover:bg-accent/40">
                     <div className="flex items-start gap-2">
-                      <ScoreBadge score={l.totalScore} size="sm" />
+                      <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                       <div className="min-w-0">
                         <div className="truncate font-medium">{l.person.fullName}</div>
                         <div className="truncate text-xs text-muted-foreground">{l.company?.name}</div>
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{signalLabel(l.attendanceType)}</div>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                          {signalLabel(l.attendanceType)} · {confidencePresentation(l.attendanceType).tier}
+                        </div>
                       </div>
                     </div>
                   </Link>

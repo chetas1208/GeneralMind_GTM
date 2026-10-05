@@ -65,7 +65,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
             <tbody className="divide-y divide-border/40">
               {columnData.flatMap((col) =>
                 col.items.map((l) => {
-                  const conf = confidencePresentation(l.attendanceType, l.attendanceConfidence);
+                  const conf = confidencePresentation(l.attendanceType);
                   return (
                     <tr key={l.id} className="hover:bg-accent/30">
                       <td className="px-4 py-2.5">
@@ -75,7 +75,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
                         <div className="text-xs text-muted-foreground">{l.company?.name}</div>
                       </td>
                       <td className="px-4 py-2.5">
-                        <ScoreBadge score={l.totalScore} size="sm" />
+                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                       </td>
                       <td className="px-4 py-2.5 text-xs text-muted-foreground">
                         {eventName.get(l.event.id)?.slice(0, 28) ?? l.event.name} · {signalLabel(l.attendanceType)} · {conf.tier}

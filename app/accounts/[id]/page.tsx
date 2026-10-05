@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { SignalTimeline } from "@/components/accounts/signal-timeline";
 import { RefreshAccountButton } from "@/components/gtm/action-buttons";
 import { ScoreBadge } from "@/components/gtm/badges";
+import { MetricInfo } from "@/components/ui/metric-info";
+import { fitBand } from "@/lib/confidence";
 import { listClustersForCompany, listSignalsForCompany } from "@/lib/db/queries/signals";
 import { getCompany, listCompanyEventLinks } from "@/lib/db/queries/companies";
 import { listLeadsForCompany } from "@/lib/db/queries/leads";
@@ -57,10 +59,12 @@ export default async function AccountPage({ params, searchParams }: PageProps<"/
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-[10px] uppercase text-muted-foreground">Priority</p>
+            <p className="inline-flex items-center justify-end gap-1 text-[10px] uppercase text-muted-foreground">
+              Priority <MetricInfo metric="priority" internal={company.accountPriority ? company.accountPriority / 100 : null} />
+            </p>
             <p className="font-mono text-2xl font-semibold tabular-nums">{company.accountPriority || "—"}</p>
           </div>
-          <ScoreBadge score={company.companyFitScore} max={40} size="lg" />
+          <ScoreBadge score={company.companyFitScore} max={40} size="lg" metric="companyFit" band={company.companyFitScore == null ? null : fitBand(company.companyFitScore, 40)} />
           <RefreshAccountButton companyId={id} />
         </div>
       </div>

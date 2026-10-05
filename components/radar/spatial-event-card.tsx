@@ -4,7 +4,7 @@ import Link from "next/link";
 import { CalendarDays, MapPin } from "lucide-react";
 import { SpatialCard } from "@/components/spatial/spatial-card";
 import { ScoreBadge } from "@/components/gtm/badges";
-import { relevanceTier } from "@/lib/gtm-present";
+import { relevanceBand } from "@/lib/confidence";
 import { formatDateRange, formatLocation } from "@/lib/format";
 
 export type EventCardData = {
@@ -24,7 +24,7 @@ export type EventCardData = {
 };
 
 export function SpatialEventCard({ event }: { event: EventCardData }) {
-  const tier = relevanceTier(event.relevanceScore);
+  const tier = relevanceBand(event.relevanceScore);
   const loc = formatLocation(event);
 
   return (
@@ -32,7 +32,7 @@ export function SpatialEventCard({ event }: { event: EventCardData }) {
         <Link href={`/events/${event.id}`} className="block space-y-2">
           <div className="flex items-start justify-between gap-2">
             <h3 className="line-clamp-2 font-semibold leading-snug">{event.name}</h3>
-            <ScoreBadge score={event.relevanceScore} size="sm" />
+            <ScoreBadge score={event.relevanceScore} size="sm" metric="eventRelevance" band={tier} />
           </div>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">

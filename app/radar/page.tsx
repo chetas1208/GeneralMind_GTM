@@ -3,6 +3,8 @@ import Link from "next/link";
 import { DiscoverEventsButton, RefreshIntelligenceButton, SourceLeadsButton } from "@/components/gtm/action-buttons";
 import { RunProgress } from "@/components/gtm/run-progress";
 import { ScoreBadge } from "@/components/gtm/badges";
+import { MetricInfo } from "@/components/ui/metric-info";
+import { relevanceBand } from "@/lib/confidence";
 import { GraphView } from "@/components/graph/graph-view";
 import { MomentumChart } from "@/components/radar/momentum-chart";
 import { ProductTour } from "@/components/onboarding/product-tour";
@@ -110,13 +112,16 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "Review-ready", value: String(reviewReady) },
-          { label: "High priority", value: String(high) },
-          { label: `${range}-day momentum`, value: series.deltaPct == null ? "—" : `${series.deltaPct > 0 ? "+" : ""}${series.deltaPct}%` },
-          { label: "Upcoming events", value: String(selected.length) },
+          { label: "Review-ready", value: String(reviewReady), metric: null },
+          { label: "High priority", value: String(high), metric: "priority" as const },
+          { label: `${range}-day momentum`, value: series.deltaPct == null ? "—" : `${series.deltaPct > 0 ? "+" : ""}${series.deltaPct}%`, metric: "momentum" as const },
+          { label: "Upcoming events", value: String(selected.length), metric: null },
         ].map((m) => (
           <div key={m.label} className="rounded-xl border border-border/60 bg-card/40 px-3 py-2.5">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{m.label}</p>
+            <p className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+              {m.label}
+              {m.metric && <MetricInfo metric={m.metric} />}
+            </p>
             <p className="font-mono text-2xl font-semibold tabular-nums">{m.value}</p>
           </div>
         ))}
@@ -170,7 +175,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
                           <p className="font-medium">{l.person.fullName}</p>
                           <p className="truncate text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
                         </div>
-                        <ScoreBadge score={l.priorityScore} size="sm" />
+                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                       </Link>
                     </li>
                   ))}
@@ -178,7 +183,9 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
               )}
             </section>
             <section>
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Funnel</h2>
+              <h2 className="mb-2 inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Funnel <MetricInfo metric="funnel" />
+              </h2>
               <ol className="space-y-1 rounded-xl border border-border/60 p-3 text-sm">
                 {funnel.stages.map((s) => (
                   <li key={s.key} className="flex justify-between gap-2">
@@ -220,7 +227,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
                             {daysAway(e.startDate, now) ? ` · ${daysAway(e.startDate, now)}` : ""}
                           </p>
                         </div>
-                        <ScoreBadge score={e.relevanceScore} size="sm" />
+                        <ScoreBadge score={e.relevanceScore} metric="eventRelevance" band={relevanceBand(e.relevanceScore)} />
                       </div>
                       <p className="mt-2 text-sm leading-relaxed">{e.relevanceReason ?? "Relevance is scored after official pages are gathered."}</p>
                       {e.targetPersonas.length > 0 && (

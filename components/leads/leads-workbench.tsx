@@ -6,7 +6,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { ScoreBadge } from "@/components/gtm/badges";
 import { LeadDetailView, type LeadDetailDto } from "@/components/leads/lead-detail-view";
-import { confidencePresentation, emailPresentation, leadStatusLabel, signalLabel } from "@/lib/gtm-present";
+import { ConfidenceBadge } from "@/components/ui/confidence-badge";
+import { MetricInfo } from "@/components/ui/metric-info";
+import { assessAttendance, fitBand } from "@/lib/confidence";
+import { emailPresentation, leadStatusLabel, signalLabel } from "@/lib/gtm-present";
 import { cn } from "@/lib/utils";
 import type { LeadListItem, LeadSort } from "@/lib/db/queries/leads";
 
@@ -253,7 +256,7 @@ export function LeadsWorkbench({
                       <p className="font-medium">{l.person.fullName}</p>
                       <p className="text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
                     </div>
-                    <ScoreBadge score={l.priorityScore} size="sm" />
+                    <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{l.event.name} · {leadStatusLabel(l.status)}</p>
                 </button>
@@ -264,7 +267,7 @@ export function LeadsWorkbench({
             <table className="w-full min-w-[720px] text-left">
               <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Score</th>
+                  <th className="px-3 py-2 font-medium">Priority</th>
                   <th className="px-3 py-2 font-medium">Person</th>
                   <th className="px-3 py-2 font-medium">Company</th>
                   <th className="px-3 py-2 font-medium">Signal</th>
@@ -273,13 +276,16 @@ export function LeadsWorkbench({
                   {cols.industry && <th className="px-3 py-2 font-medium">Industry</th>}
                   {cols.persona && <th className="px-3 py-2 font-medium">Persona</th>}
                   {cols.email && <th className="px-3 py-2 font-medium">Contact</th>}
-                  {cols.fit && <th className="px-3 py-2 font-medium">Fit</th>}
+                  {cols.fit && (
+                    <th className="px-3 py-2 font-medium">
+                      <span className="inline-flex items-center gap-1">Fit <MetricInfo metric="companyFit" /></span>
+                    </th>
+                  )}
                   <th className="px-3 py-2 font-medium">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {items.map((l) => {
-                  const conf = confidencePresentation(l.attendanceType, l.attendanceConfidence);
                   const active = l.id === selectedId;
                   return (
                     <tr
@@ -290,7 +296,7 @@ export function LeadsWorkbench({
                       className={cn("cursor-pointer align-middle outline-none hover:bg-accent/40 focus-visible:bg-accent/50", active && "bg-accent/60")}
                     >
                       <td className="px-3 py-2">
-                        <ScoreBadge score={l.totalScore} size="sm" />
+                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{l.person.fullName}</div>
@@ -302,8 +308,7 @@ export function LeadsWorkbench({
                         {l.event.name.length > 24 ? "…" : ""}
                       </td>
                       <td className="px-3 py-2 text-xs">
-                        <span className="font-medium">{conf.tier}</span>
-                        <span className="text-muted-foreground"> · {conf.detail}</span>
+                        <ConfidenceBadge assessment={assessAttendance({ attendanceType: l.attendanceType })} compact />
                       </td>
                       {cols.event && <td className="px-3 py-2 text-xs">{l.event.name}</td>}
                       {cols.industry && <td className="px-3 py-2 text-xs text-muted-foreground">{l.company?.industry ?? "—"}</td>}
@@ -318,8 +323,8 @@ export function LeadsWorkbench({
                         </td>
                       )}
                       {cols.fit && (
-                        <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
-                          {l.companyFitScore}·{l.personaFitScore}·{l.intentScore}
+                        <td className="px-3 py-2 text-[11px] text-muted-foreground">
+                          {fitBand(l.companyFitScore, 40)} · {fitBand(l.personaFitScore, 30)}
                         </td>
                       )}
                       <td className="px-3 py-2 text-xs">{leadStatusLabel(l.status)}</td>

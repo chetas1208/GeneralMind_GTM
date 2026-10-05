@@ -132,6 +132,7 @@ export async function updateLead(
     scoreBreakdown: ScoreBreakdownJson;
     qualificationReason: string | null;
     qualificationDetail: QualificationDetailJson | null;
+    confidenceAssessment: import("@/lib/db/schema").ConfidenceAssessmentJson | null;
     aiStatus: LeadRow["aiStatus"];
     aiError: string | null;
   }>,

@@ -302,6 +302,25 @@ export type OpportunityHypothesisJson = {
   generatedAt?: string;
 };
 
+export type ConfidenceAssessmentJson = {
+  band: string;
+  label: string;
+  summary: string;
+  why: string[];
+  uncertainty: string[];
+  internalScore: number;
+  contradictions: string[];
+  previousBand?: string | null;
+  changeReason?: string | null;
+  assessedAt: string;
+  narrative?: {
+    whyNow?: string;
+    whyGeneralMind?: string;
+    discoveryAngle?: string;
+    evidenceIds?: string[];
+  };
+};
+
 export type LeadQualityFlagsJson = {
   titleMismatch?: boolean;
   weakEvidence?: boolean;
@@ -340,6 +359,8 @@ export const eventLeads = pgTable(
 
     qualificationReason: text("qualification_reason"),
     qualificationDetail: jsonb("qualification_detail").$type<QualificationDetailJson>(),
+    /** Band, factors, and optional narrative. The 0–1 score is a ranking aid. */
+    confidenceAssessment: jsonb("confidence_assessment").$type<ConfidenceAssessmentJson>(),
     aiStatus: aiStatus("ai_status").notNull().default("pending"),
     aiError: text("ai_error"),
 

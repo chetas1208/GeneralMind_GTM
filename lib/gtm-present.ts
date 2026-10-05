@@ -1,5 +1,5 @@
 import { isVerifiedEmailStatus, UNVERIFIED_EMAIL_STATUS } from "@/lib/contact/email-guess";
-import { CONFIRMED_ATTENDANCE } from "@/lib/scoring/config";
+import { assessAttendance as assessAttendanceClaim } from "@/lib/confidence";
 import { humanize } from "@/lib/format";
 
 export type FieldClarity = "verified" | "unverified" | "manual" | "inferred" | "unknown";
@@ -68,23 +68,25 @@ export function evidenceSourceLabel(type: string): string {
   return map[type] ?? humanize(type);
 }
 
-export function evidenceStrength(confidence: number): "High" | "Medium" | "Low" {
-  if (confidence >= 80) return "High";
-  if (confidence >= 50) return "Medium";
-  return "Low";
+/** Band for one evidence row. The stored 0–100 stays out of the label. */
+export function evidenceStrength(sourceType: string): string {
+  if (["official_speaker", "official_attendee", "official_exhibitor", "official_sponsor", "agenda", "company_announcement"].includes(sourceType)) {
+    return "Confirmed";
+  }
+  if (sourceType === "person_announcement" || sourceType === "enrichment") return "Strong";
+  if (sourceType === "public_web") return "Weak";
+  if (sourceType === "inference") return "Unverified";
+  return "Moderate";
 }
 
-/** Human confidence tier + optional numeric. */
-export function confidencePresentation(attendanceType: string, confidence: number): { tier: string; detail: string } {
-  const confirmed = CONFIRMED_ATTENDANCE.has(attendanceType as never);
-  if (confirmed && confidence >= 90) return { tier: "Confirmed", detail: `${confidence}%` };
-  if (confirmed) return { tier: "Strong evidence", detail: `${confidence}%` };
-  if (confidence >= 50) return { tier: "Probable", detail: `${confidence}%` };
-  if (attendanceType.includes("employee") || attendanceType === "company_participating") {
-    return { tier: "Company-associated", detail: `${confidence}%` };
-  }
-  if (confidence >= 25) return { tier: "Unverified", detail: `${confidence}%` };
-  return { tier: "Weak signal", detail: `${confidence}%` };
+/** Confidence band plus the reason. The numeric argument is an internal ranking aid and is not shown. */
+export function confidencePresentation(attendanceType: string): { tier: string; detail: string } {
+  const assessed = assessAttendanceClaim({ attendanceType });
+  return { tier: assessed.label, detail: assessed.summary };
+}
+
+export function assessAttendance(attendanceType: string) {
+  return confidencePresentation(attendanceType);
 }
 
 export function signalLabel(attendanceType: string): string {

@@ -398,7 +398,7 @@ When Apollo People data is unavailable, a lead's outreach route is a **verified 
    - fallback: an LLM reads the page, and its quote must be verbatim **and** itself name the employer.
 4. The evidence stores the page's own text (never a paraphrase), labelled *self-published, not independently verified*.
 
-Verified profiles flow to HubSpot as `hs_linkedin_url` (https LinkedIn `/in/` URLs only). Work emails are never inferred or pattern-guessed. A lead page shows the route, or an honest "Not found yet" with a *Find verified profile* action (`POST /api/leads/:id/contact-route`, reviewer-only). Contactability contributes 5 account-priority points for an email and 3 for a verified profile.
+Verified profiles flow to HubSpot as `hs_linkedin_url` (https LinkedIn `/in/` URLs only). When no verified work email exists, the pipeline may store `first.last@domain` as **unverified** and the UI shows `name@company.com (unverified)`. A lead page shows the route, or an honest "Not found yet" with a *Find verified profile* action (`POST /api/leads/:id/contact-route`, reviewer-only). Contactability adds 5 for a verified email, otherwise 2 for an unverified email, otherwise 3 for a verified public profile.
 
 - Provider failures are isolated: if one signal adapter fails the others still run; if Apollo people search is unavailable the pipeline switches to the verified-profile route above and `/system` reports Apollo as degraded.
 - Retries: 429 / 5xx / timeouts retry the failed *step* with backoff; auth, config and validation errors are non-retriable and fail the run with the real message.
@@ -411,7 +411,7 @@ Verified profiles flow to HubSpot as `hs_linkedin_url` (https LinkedIn `/in/` UR
 - **Some pages block automated extraction**; those sources are skipped, not guessed.
 - **Signal quality depends on public evidence.** Heuristic verification is deliberately conservative and will miss weak signals. Two articles about one development can still survive as two signals if their wording differs.
 - **Opportunity** is modelled as event leads plus account intelligence; there is no separate `opportunities` table yet.
-- **"Why GeneralMind" / discovery angle** on accounts are currently deterministic templates; evidence-ID-grounded model synthesis is designed but not wired in.
+- **"Why now" / "Why GeneralMind"** are written only when the model cites evidence ids that already exist on the lead. A rationale with no matching id is not shown. The confidence band itself is computed in code.
 - **No M&A or technology-adoption adapter** beyond negative-automation detection.
 - **No scheduled refresh.** Everything is user-triggered; scheduling belongs in Inngest, not Vercel Cron.
 - **Single reviewer role** with a shared password — appropriate for a case-study deployment, not multi-tenant production.

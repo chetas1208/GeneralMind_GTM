@@ -6,6 +6,8 @@ import { workflowLabel } from "@/lib/icp/workflows";
 import { formatDateRange, formatLocation } from "@/lib/format";
 import { signalTypeLabel } from "@/lib/gtm-present";
 import type { GraphQueryParams, GraphViewModel } from "./types";
+import { assessAttendance } from "@/lib/confidence";
+import { evidenceStrength } from "@/lib/gtm-present";
 import { pruneGraph } from "./prune";
 import { GraphAccumulator, edgeId, nodeId, workflowNodeId } from "./transforms";
 import { listEvents } from "@/lib/db/queries/events";
@@ -128,19 +130,16 @@ function linkPersonEvent(
 ) {
   const et = attendanceEdgeType(attendanceType);
   const verification = attendanceVerification(attendanceType, attendanceConfidence);
+  const assessed = assessAttendance({ attendanceType });
   acc.addEdge({
     id: edgeId(et, nodeId("person", personId), nodeId("event", eventId)),
     source: nodeId("person", personId),
     target: nodeId("event", eventId),
     type: et,
-    label: et.replace(/_/g, " "),
+    label: assessed.label,
     confidence: attendanceConfidence,
     verification,
-    explanation:
-      explanation ??
-      (verification === "verified"
-        ? "Attendance link supported by official or high-confidence evidence."
-        : "Company participates at the event; this person's own attendance is not independently verified."),
+    explanation: explanation ?? assessed.summary,
   });
 }
 
@@ -159,7 +158,7 @@ function linkCompanyEvent(
     source: nodeId("company", companyId),
     target: nodeId("event", eventId),
     type: et,
-    label: associationType.replace(/_/g, " "),
+    label: ["exhibitor", "sponsor", "partner", "speaker_company", "organizer"].includes(associationType) ? "Strong" : "Moderate",
     confidence,
     verification,
     explanation: evidenceText?.slice(0, 220) ?? undefined,
@@ -190,6 +189,7 @@ async function addCompanyIntelligence(
       source: sid,
       target: nodeId("company", companyId),
       type: "signal_for",
+      label: s.direction === "negative" ? "Conflicted" : s.confidence >= 75 ? "Strong" : "Moderate",
       confidence: s.confidence,
       verification: s.confidence >= 75 ? "verified" : "inferred",
       explanation: s.summary.slice(0, 200),
@@ -208,6 +208,7 @@ async function addCompanyIntelligence(
         source: sid,
         target: wid,
         type: "suggests_workflow",
+        label: s.direction === "negative" ? "Conflicted" : "Moderate",
         confidence: s.relevance,
         verification: s.direction === "negative" ? "inferred" : "verified",
         explanation: s.direction === "negative" ? "Negative or conflicting signal." : undefined,
@@ -218,6 +219,7 @@ async function addCompanyIntelligence(
           source: wid,
           target: nodeId("opportunity", opportunityLeadId),
           type: "supports_opportunity",
+          label: "Moderate",
           confidence: s.confidence,
           verification: "inferred",
         });
@@ -273,6 +275,7 @@ function addEvidenceNodes(
       source: eid,
       target: nodeId("opportunity", opportunityId),
       type: "evidence_for",
+      label: evidenceStrength(e.sourceType),
       confidence: e.confidence,
       verification: verified ? "verified" : "inferred",
       explanation: e.evidenceText.slice(0, 240),

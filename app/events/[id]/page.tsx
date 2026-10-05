@@ -6,6 +6,7 @@ import { EventStatusButtons, SourceLeadsButton } from "@/components/gtm/action-b
 import { EventGraphPanel } from "@/components/events/event-graph-panel";
 import { EventTabBar, parseEventTab } from "@/components/events/event-tab-bar";
 import { ScoreBadge, StatusPill, Tag } from "@/components/gtm/badges";
+import { assessAttendance, fitBand, relevanceBand } from "@/lib/confidence";
 import { signalLabel } from "@/lib/gtm-present";
 import { EditEventSheet } from "@/components/gtm/edit-event";
 import { isActiveStatus } from "@/lib/run-status";
@@ -68,8 +69,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
             <h1 className="text-xl font-semibold tracking-tight">{event.name}</h1>
             {event.relevanceScore != null && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <ScoreBadge score={event.relevanceScore} size="sm" />
-                {event.relevanceScore >= 75 ? "Strong fit" : event.relevanceScore >= 55 ? "Moderate fit" : "Low fit"}
+                <ScoreBadge score={event.relevanceScore} metric="eventRelevance" band={relevanceBand(event.relevanceScore)} />
               </span>
             )}
           </div>
@@ -173,7 +173,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                 <table className="w-full min-w-[640px] text-left">
                   <thead className="border-b bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Score</th>
+                      <th className="px-3 py-2 font-medium">Priority</th>
                       <th className="px-3 py-2 font-medium">Person</th>
                       <th className="px-3 py-2 font-medium">Signal</th>
                       <th className="px-3 py-2 font-medium">Status</th>
@@ -183,7 +183,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                     {leads.items.slice(0, 12).map((l) => (
                       <tr key={l.id} className="hover:bg-muted/30">
                         <td className="px-3 py-2">
-                          <ScoreBadge score={l.totalScore} size="sm" />
+                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
                         </td>
                         <td className="px-3 py-2">
                           <Link href={`/leads?event=${event.id}&lead=${l.id}`} className="font-medium hover:underline">
@@ -193,7 +193,9 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                             {l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}
                           </div>
                         </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">{signalLabel(l.attendanceType)}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {signalLabel(l.attendanceType)} · {assessAttendance({ attendanceType: l.attendanceType }).label}
+                        </td>
                         <td className="px-3 py-2">
                           <StatusPill status={l.status} />
                         </td>
@@ -223,7 +225,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                     <th className="px-3 py-2 font-medium">Event role</th>
                     <th className="px-3 py-2 font-medium">Industry</th>
                     <th className="px-3 py-2 text-right font-medium">Employees</th>
-                    <th className="px-3 py-2 text-right font-medium">Fit /40</th>
+                    <th className="px-3 py-2 text-right font-medium">Company fit</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
@@ -243,7 +245,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                       <td className="px-3 py-2 text-muted-foreground">{c.industry ?? "—"}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{c.employeeCount?.toLocaleString("en-US") ?? "—"}</td>
                       <td className="px-3 py-2 text-right">
-                        <ScoreBadge score={c.companyFitScore} max={40} size="sm" />
+                        <ScoreBadge score={c.companyFitScore} max={40} metric="companyFit" band={c.companyFitScore == null ? null : fitBand(c.companyFitScore, 40)} />
                       </td>
                     </tr>
                   ))}

@@ -16,7 +16,7 @@ const STAGES = [
 
 const GUARDRAILS = [
   ["The model never produces a number", "Lead score, event relevance and attendance confidence are computed in TypeScript from categorical ratings and evidence."],
-  ["Inference is labelled as inference", "An exhibitor's employee is shown as “Exhibitor employee — attendance not confirmed”, capped at 60% confidence, never as attending."],
+  ["Inference is labelled as inference", "An exhibitor's employee is shown as Moderate: the company is listed, and personal attendance is not verified."],
   ["Evidence is built by code", "Snippets are cut from retrieved source text, hashed for dedupe, and stored with URL + retrieval time. The model cannot supply a citation."],
   ["Schema-validated AI", "Every model response is parsed with Zod; one repair retry, then the item is marked failed and the source data is kept."],
   ["Humans gate the CRM", `Only reviewed and approved leads (score ≥ ${LEAD_QUALIFY_THRESHOLD} to enter the queue) can be pushed to HubSpot; the upsert is idempotent and records every attempt.`],

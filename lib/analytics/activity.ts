@@ -1,7 +1,8 @@
 import "server-only";
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { companies, eventLeads, events, people, reviewActions, signals, sourceRuns } from "@/lib/db/schema";
+import { BAND_LABEL, type ConfidenceBand } from "@/lib/confidence";
 import { signalTypeLabel } from "@/lib/gtm-present";
 import type { ActivityItem } from "./types";
 
@@ -82,6 +83,7 @@ export async function loadActivity(limit = 12): Promise<ActivityItem[]> {
       })),
   ];
 
+  items.push(...(await confidenceChangeItems()));
   return items.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).slice(0, limit);
 }
 
@@ -132,5 +134,35 @@ export async function loadAccountActivity(companyId: string, limit = 20): Promis
       href: `/leads?lead=${r.leadId}`,
     })),
   ];
+  items.push(...(await confidenceChangeItems(companyId)));
   return items.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).slice(0, limit);
+}
+
+async function confidenceChangeItems(companyId?: string): Promise<ActivityItem[]> {
+  const rows = await getDb()
+    .select({
+      id: eventLeads.id,
+      name: people.fullName,
+      assessment: eventLeads.confidenceAssessment,
+      at: eventLeads.updatedAt,
+    })
+    .from(eventLeads)
+    .innerJoin(people, eq(people.id, eventLeads.personId))
+    .where(companyId ? eq(eventLeads.companyId, companyId) : sql`${eventLeads.confidenceAssessment}->>'changeReason' <> ''`)
+    .orderBy(desc(eventLeads.updatedAt))
+    .limit(8);
+  return rows.flatMap((r) => {
+    const previous = r.assessment?.previousBand;
+    const current = r.assessment?.label;
+    const reason = r.assessment?.changeReason;
+    if (!previous || !current || !reason) return [];
+    return [{
+      id: `confidence-${r.id}`,
+      type: "confidence_changed",
+      title: `Confidence changed · ${r.name}`,
+      description: `${BAND_LABEL[previous as ConfidenceBand] ?? previous} → ${current}. ${r.assessment?.summary ?? reason}`,
+      occurredAt: r.assessment?.assessedAt ?? r.at.toISOString(),
+      href: `/leads?lead=${r.id}`,
+    }];
+  });
 }

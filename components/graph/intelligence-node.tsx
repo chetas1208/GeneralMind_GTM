@@ -47,12 +47,8 @@ function IntelligenceNodeComponent({ data, selected }: NodeProps) {
       {t === "opportunity" && <p className="text-[9px] font-semibold uppercase tracking-widest text-sky-400/90">Opportunity</p>}
       <p className={cn("font-medium leading-tight", t === "signal" || t === "evidence" ? "text-[11px]" : "text-[13px]")}>{d.label}</p>
       {d.subtitle && <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{d.subtitle}</p>}
-      {(d.score != null || d.confidence != null) && (
-        <p className="mt-1 font-mono text-[10px] tabular-nums text-muted-foreground">
-          {d.score != null && <>Fit {d.score}</>}
-          {d.score != null && d.confidence != null && " · "}
-          {d.confidence != null && <>Pri {d.confidence}</>}
-        </p>
+      {t === "opportunity" && d.confidence != null && (
+        <p className="mt-1 text-[10px] text-muted-foreground">Priority {d.confidence}</p>
       )}
       <Handle type="source" position={Position.Bottom} className="!h-1.5 !w-1.5 !border-0 !bg-muted-foreground/40" />
     </div>

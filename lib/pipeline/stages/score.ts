@@ -9,6 +9,9 @@ import type { QualificationDetailJson } from "@/lib/db/schema";
 import { isNegativePersona, inferOpportunityHypothesis } from "@/lib/icp";
 import { ATTENDANCE_LABEL, CONFIRMED_ATTENDANCE, LEAD_QUALIFY_THRESHOLD } from "@/lib/scoring/config";
 import { isVerifiedEmailStatus } from "@/lib/contact/email-guess";
+import { assessConfidence } from "@/lib/confidence";
+import type { ConfidenceAssessmentJson } from "@/lib/db/schema";
+import type { ConfidenceBand } from "@/lib/confidence";
 import { computeLeadPriority } from "@/lib/intelligence/ranking/lead-priority";
 import { countPersonLeadFrequency } from "@/lib/db/queries/leads";
 import type { RunContext } from "../context";
@@ -60,6 +63,41 @@ export async function runScoreStage(ctx: RunContext, event: EventRow): Promise<b
       attendanceConfirmed: CONFIRMED_ATTENDANCE.has(r.lead.attendanceType),
     });
 
+    const previousBand = (r.lead.confidenceAssessment?.band ?? null) as ConfidenceBand | null;
+    const assessment = assessConfidence({
+      kind: "attendance",
+      attendanceType: r.lead.attendanceType,
+      sourceTypes: ev.map((e) => e.sourceType),
+      sourceUrls: ev.map((e) => e.sourceUrl),
+      independentSources: new Set(ev.map((e) => e.sourceType)).size,
+      retrievedAt: ev[0]?.retrievedAt ?? null,
+      identity: { roleVerified: Boolean(r.person.enrichedAt), titleMismatch: Boolean(r.lead.qualityFlags?.titleMismatch) },
+      completeness: {
+        person: Boolean(r.person.fullName),
+        title: Boolean(r.person.title),
+        company: Boolean(r.company?.name),
+        event: Boolean(event.name),
+        source: ev.length > 0,
+        date: Boolean(event.startDate),
+      },
+      contradictions: r.lead.qualityFlags?.titleMismatch ? ["The event title and the verified profile do not match."] : [],
+      previousBand,
+      allowedEvidenceIds: ev.map((e) => e.id),
+    });
+    const confidenceAssessment: ConfidenceAssessmentJson = {
+      band: assessment.band,
+      label: assessment.label,
+      summary: assessment.summary,
+      why: assessment.why,
+      uncertainty: assessment.uncertainty,
+      internalScore: assessment.internalScore,
+      contradictions: assessment.contradictions,
+      previousBand: previousBand && previousBand !== assessment.band ? previousBand : null,
+      changeReason: previousBand && previousBand !== assessment.band ? assessment.changeReason : null,
+      assessedAt: new Date().toISOString(),
+      narrative: r.lead.confidenceAssessment?.narrative,
+    };
+
     await updateLead(r.lead.id, {
       companyFitScore: score.company.total,
       personaFitScore: score.persona.total,
@@ -73,6 +111,7 @@ export async function runScoreStage(ctx: RunContext, event: EventRow): Promise<b
       attendanceConfidence: score.attendanceConfidence,
       scoreBreakdown: score.breakdown,
       qualificationReason: deterministicReason({ person: r.person, company: r.company, event, lead: r.lead, score }),
+      confidenceAssessment,
       status,
     });
     if (r.company && r.company.companyFitScore !== score.company.total && r.company.enrichedAt) {
@@ -135,7 +174,52 @@ export async function runExplainStage(ctx: RunContext, event: EventRow): Promise
       }
       if (!HEDGED.test(guarded.uncertainty)) guarded.uncertainty = `${guarded.uncertainty} Personal attendance is not confirmed.`.trim();
     }
-    await updateLead(leadId, { qualificationDetail: guarded, aiStatus: "done", aiError: null });
+    const { classifyEvidence } = await import("@/lib/confidence/synthesize");
+    let confidenceAssessment = r.lead.confidenceAssessment ?? undefined;
+    try {
+      const classified = await classifyEvidence({
+        person: r.person.fullName,
+        title: r.person.title,
+        company: r.company?.name,
+        event: event.name,
+        attendanceType: r.lead.attendanceType,
+        evidence: ev.slice(0, 8).map((e) => ({ id: e.id, type: e.sourceType, text: e.evidenceText })),
+      });
+      const assessed = assessConfidence({
+        kind: "attendance",
+        attendanceType: r.lead.attendanceType,
+        sourceTypes: ev.map((e) => e.sourceType),
+        independentSources: new Set(ev.map((e) => e.sourceType)).size,
+        retrievedAt: ev[0]?.retrievedAt ?? null,
+        identity: { roleVerified: Boolean(r.person.enrichedAt) },
+        allowedEvidenceIds: ev.map((e) => e.id),
+        previousBand: (r.lead.confidenceAssessment?.band ?? null) as ConfidenceBand | null,
+        llm: classified,
+      });
+      confidenceAssessment = {
+        band: assessed.band,
+        label: assessed.label,
+        summary: assessed.summary,
+        why: assessed.why,
+        uncertainty: assessed.uncertainty,
+        internalScore: assessed.internalScore,
+        contradictions: assessed.contradictions,
+        previousBand: r.lead.confidenceAssessment?.band && r.lead.confidenceAssessment.band !== assessed.band ? r.lead.confidenceAssessment.band : null,
+        changeReason: r.lead.confidenceAssessment?.band && r.lead.confidenceAssessment.band !== assessed.band ? assessed.changeReason : null,
+        assessedAt: new Date().toISOString(),
+        narrative: classified.evidenceIds.length
+          ? {
+              whyNow: classified.whyNow,
+              whyGeneralMind: classified.whyGeneralMind,
+              discoveryAngle: classified.discoveryAngle,
+              evidenceIds: classified.evidenceIds,
+            }
+          : undefined,
+      };
+    } catch {
+      /* classification is an input, not a requirement */
+    }
+    await updateLead(leadId, { qualificationDetail: guarded, confidenceAssessment, aiStatus: "done", aiError: null });
     return `Explained ${r.person.fullName}`;
   });
 
