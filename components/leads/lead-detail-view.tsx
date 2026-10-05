@@ -18,6 +18,7 @@ import { ATTENDANCE_LABEL, CONFIRMED_ATTENDANCE } from "@/lib/scoring/config";
 import { ProvenancePath } from "@/components/leads/provenance-path";
 import { workflowLabel } from "@/lib/icp/workflows";
 import { cn } from "@/lib/utils";
+import { safeHref } from "@/lib/safe-url";
 
 export type LeadDetailDto = {
   lead: {
@@ -242,7 +243,7 @@ export function LeadDetailView({
                   </div>
                   <p className="mt-1 text-muted-foreground">{e.evidenceText}</p>
                   {e.sourceUrl && (
-                    <a href={e.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-sky-400 hover:underline">
+                    <a href={safeHref(e.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-sky-400 hover:underline">
                       Open source <ExternalLink className="size-3" />
                     </a>
                   )}
@@ -268,7 +269,7 @@ export function LeadDetailView({
               <>
                 <dt className="text-muted-foreground">Profile</dt>
                 <dd>
-                  <a href={person.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
+                  <a href={safeHref(person.linkedinUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
                     LinkedIn
                   </a>
                 </dd>

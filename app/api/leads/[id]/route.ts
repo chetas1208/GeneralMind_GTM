@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { requireReviewer } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { HttpError, handle, isUuid, json, readJson } from "@/lib/api";
 import { getLeadDetail } from "@/lib/db/queries/leads";
@@ -23,6 +24,7 @@ const editSchema = z.object({
 /** Manual correction of title / email with an audit entry. */
 export async function PATCH(request: Request, ctx: RouteContext<"/api/leads/[id]">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid lead id");
     const body = editSchema.parse(await readJson(request));

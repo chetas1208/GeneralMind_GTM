@@ -44,8 +44,10 @@ const envSchema = z.object({
   INNGEST_SIGNING_KEY: optionalString,
   /** Set to "1" locally to talk to the Inngest dev server instead of Inngest Cloud. */
   INNGEST_DEV: optionalString,
-  /** When set, every page and API route (except the signed Inngest endpoint) requires this shared access password. */
+  /** Shared reviewer password. Every page and API route (except the signed Inngest endpoint) requires a session created with it. */
   APP_ACCESS_PASSWORD: optionalString,
+  /** HMAC key for signed reviewer sessions. Required in production (the gate fails closed without it). */
+  AUTH_SECRET: optionalString,
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -85,7 +87,8 @@ type SecretKey =
   | "INNGEST_EVENT_KEY"
   | "INNGEST_SIGNING_KEY"
   | "INNGEST_DEV"
-  | "APP_ACCESS_PASSWORD";
+  | "APP_ACCESS_PASSWORD"
+  | "AUTH_SECRET";
 
 export function requireEnv<K extends SecretKey>(key: K): string {
   const value = getEnv()[key];

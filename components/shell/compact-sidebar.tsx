@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Kanban, Radar, Search, Users, PanelLeftClose, PanelLeft } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { Kanban, LogOut, Radar, Search, Users, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -21,6 +21,7 @@ export function CompactSidebar({
   onSearch: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <aside
@@ -81,6 +82,22 @@ export function CompactSidebar({
               <kbd className="rounded border px-1 font-mono text-[10px]">⌘K</kbd>
             </>
           )}
+        </button>
+        <button
+          type="button"
+          onClick={async () => {
+            await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+            router.push("/login");
+            router.refresh();
+          }}
+          className={cn(
+            "mt-0.5 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground",
+            collapsed && "justify-center px-0",
+          )}
+          title="Sign out"
+        >
+          <LogOut className="size-4 shrink-0" />
+          {!collapsed && <span className="flex-1 text-left">Sign out</span>}
         </button>
       </div>
     </aside>

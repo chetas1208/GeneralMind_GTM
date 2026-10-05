@@ -1,10 +1,12 @@
 import "server-only";
 import type { SignalAdapter } from "../types";
 import { attachDedupe } from "../normalize";
-import { searchSignalCandidates, verifySnippet } from "./exa-shared";
+import { isMarketingContent, tieredConfidence, withoutVerificationPayload } from "../verify";
+import { searchSignalCandidates, verifyNearCompany } from "./exa-shared";
 
-const NEEDLES = /procurement transformation|supply chain transformation|operational excellence|finance transformation|shared services|digital operations|automation initiative/i;
-const NEGATIVE = /touchless|fully automated|95% automated|straight-through processing|no manual/i;
+const NEEDLES = /\b(procurement transformation|supply chain transformation|order management transformation|finance transformation|shared services (transformation|centre|center)|operational excellence (program|initiative)|digital operations|automation (initiative|program))\b/i;
+const ACTOR = /\b(announc\w+|launch\w+|kick\w* off|embark\w+|implement\w+|undertak\w+|roll\w* out|started|began|is investing|invests)\b/i;
+const NEGATIVE = /\b(touchless (invoice|processing|AP)|fully automated (AP|invoice|order)|straight-through processing|\d{2}% (touchless|automated))\b/i;
 
 export const operationalInitiativeAdapter: SignalAdapter = {
   id: "operations",
@@ -31,10 +33,13 @@ export const operationalInitiativeAdapter: SignalAdapter = {
 
   async verify(candidate, input) {
     if (candidate.direction === "negative") {
-      if (!verifySnippet(candidate, [NEGATIVE])) return null;
-      return attachDedupe(input.companyId, { ...candidate, confidence: 70, relevance: 35 });
+      if (!verifyNearCompany(candidate, [NEGATIVE], input.companyName)) return null;
+      return attachDedupe(input.companyId, { ...withoutVerificationPayload(candidate), confidence: 70, relevance: 35 });
     }
-    if (!verifySnippet(candidate, [NEEDLES])) return null;
-    return attachDedupe(input.companyId, { ...candidate, confidence: 82 });
+    if (isMarketingContent(candidate.title)) return null;
+    if (!verifyNearCompany(candidate, [NEEDLES], input.companyName)) return null;
+    // The company must be the actor (announces / launches / implements…), not a publisher writing thought leadership.
+    if (!verifyNearCompany(candidate, [ACTOR], input.companyName, 200)) return null;
+    return attachDedupe(input.companyId, { ...withoutVerificationPayload(candidate), confidence: tieredConfidence(candidate, 80) });
   },
 };

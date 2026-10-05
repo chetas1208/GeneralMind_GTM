@@ -1,10 +1,13 @@
 import "server-only";
 import type { SignalAdapter } from "../types";
 import { attachDedupe } from "../normalize";
-import { searchSignalCandidates, verifySnippet } from "./exa-shared";
+import { isMarketingContent, tieredConfidence, withoutVerificationPayload } from "../verify";
+import { searchSignalCandidates, verifyNearCompany } from "./exa-shared";
 
-const NEEDLES = /appointed|names|joins as|new (chief|vp|head)|chief procurement|chief supply chain|coo|cio/i;
+const APPOINTMENT = /\b(appointed|appoints|names|named|joins as|has joined|promoted|new (chief|vp|vice president|head|svp))\b/i;
+const ROLE = /\b(COO|CPO|CIO|CDO|Chief (Procurement|Supply Chain|Operating|Information|Digital) Officer|(VP|Vice President|SVP|Head) of (Procurement|Supply Chain|Operations|Shared Services|Finance Transformation|Digital Transformation))\b/i;
 
+/** New functional leader ≠ confirmed buyer: stored as a timing signal only. */
 export const executiveChangeSignalAdapter: SignalAdapter = {
   id: "executive",
 
@@ -19,7 +22,11 @@ export const executiveChangeSignalAdapter: SignalAdapter = {
   },
 
   async verify(candidate, input) {
-    if (!verifySnippet(candidate, [NEEDLES])) return null;
-    return attachDedupe(input.companyId, { ...candidate, confidence: 76 });
+    if (isMarketingContent(candidate.title)) return null;
+    if (!candidate.occurredAt) return null; // the 90-day window is the whole point; undated moves can't be ranked
+    // Both an appointment verb AND a target role must be stated about this company.
+    if (!verifyNearCompany(candidate, [APPOINTMENT], input.companyName, 300)) return null;
+    if (!verifyNearCompany(candidate, [ROLE], input.companyName, 300)) return null;
+    return attachDedupe(input.companyId, { ...withoutVerificationPayload(candidate), confidence: tieredConfidence(candidate, 74) });
   },
 };

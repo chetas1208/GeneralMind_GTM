@@ -10,6 +10,7 @@ import { IntegrationError } from "@/lib/http";
 import { createLogger } from "@/lib/logger";
 import { syncLeadToHubspot } from "@/lib/integrations/hubspot/sync";
 import { ATTENDANCE_LABEL } from "@/lib/scoring/config";
+import { canTransition, transitionError, type ReviewAction } from "./transitions";
 
 const log = createLogger("review");
 
@@ -29,21 +30,28 @@ export function isApproved(d: Pick<LeadDetail, "reviews">): boolean {
   return decision?.action === "approve";
 }
 
+/** Throws 409 unless the action is legal from the lead's current status. A "failed" lead needs prior review history. */
+function assertTransition(action: ReviewAction, d: LeadDetail) {
+  const from = d.lead.status;
+  const failedWithoutReview = from === "failed" && !d.reviews.some((r) => r.action === "approve" || r.action === "reject");
+  if (!canTransition(action, from) || failedWithoutReview) throw new HttpError(409, transitionError(action, from));
+}
+
 export async function approveLead(id: string, notes?: string | null) {
   const d = await mustGet(id);
-  if (d.lead.status === "hubspot_synced") throw new HttpError(409, "Lead is already synced to HubSpot");
+  assertTransition("approve", d);
   await updateLead(id, { status: "approved" });
   await record(id, "approve", null, notes);
-  log.info("lead approved", { leadId: id });
+  log.info("lead approved", { leadId: id, from: d.lead.status });
   return mustGet(id);
 }
 
 export async function rejectLead(id: string, reason: string, notes?: string | null) {
   const d = await mustGet(id);
-  if (d.lead.status === "hubspot_synced") throw new HttpError(409, "Lead is already synced to HubSpot and cannot be rejected here");
+  assertTransition("reject", d);
   await updateLead(id, { status: "rejected" });
   await record(id, "reject", reason, notes);
-  log.info("lead rejected", { leadId: id, reason });
+  log.info("lead rejected", { leadId: id, reason, from: d.lead.status });
   return mustGet(id);
 }
 
@@ -96,6 +104,7 @@ export async function pushLeadToHubspot(id: string): Promise<HubspotPushResult> 
       steps: ["Lead already synced — no duplicate contact or company was created."],
     };
   }
+  if (!canTransition("push_hubspot", d.lead.status)) throw new HttpError(409, transitionError("push_hubspot", d.lead.status));
   if (latestSync?.status === "syncing" && Date.now() - latestSync.createdAt.getTime() < 2 * 60_000) {
     throw new HttpError(409, "A HubSpot sync for this lead is already in progress");
   }

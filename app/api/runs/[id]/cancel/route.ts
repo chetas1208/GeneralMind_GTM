@@ -1,9 +1,11 @@
 import { HttpError, handle, isUuid, json } from "@/lib/api";
+import { requireReviewer } from "@/lib/auth";
 import { requestCancel } from "@/lib/db/queries/runs";
 
 /** Ask a run to stop. It halts at the next stage boundary; collected data is kept. */
-export async function POST(_req: Request, ctx: RouteContext<"/api/runs/[id]/cancel">) {
+export async function POST(request: Request, ctx: RouteContext<"/api/runs/[id]/cancel">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid run id");
     const run = await requestCancel(id);

@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { requireReviewer } from "@/lib/auth";
 import { HttpError, handle, isUuid, json, readJson } from "@/lib/api";
 import { deleteEvent, eventDedupeKey, getEvent, listEventSources, updateEvent } from "@/lib/db/queries/events";
 import { eventPatchSchema } from "@/lib/events/schemas";
@@ -16,6 +17,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/events/[id]">) 
 
 export async function PATCH(request: Request, ctx: RouteContext<"/api/events/[id]">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid event id");
     const patch = eventPatchSchema.parse(await readJson(request));
@@ -32,8 +34,9 @@ export async function PATCH(request: Request, ctx: RouteContext<"/api/events/[id
   });
 }
 
-export async function DELETE(_req: Request, ctx: RouteContext<"/api/events/[id]">) {
+export async function DELETE(request: Request, ctx: RouteContext<"/api/events/[id]">) {
   return handle(async () => {
+    await requireReviewer(request);
     const { id } = await ctx.params;
     if (!isUuid(id)) throw new HttpError(400, "Invalid event id");
     await deleteEvent(id);

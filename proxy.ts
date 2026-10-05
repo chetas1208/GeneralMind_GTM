@@ -1,22 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ACCESS_COOKIE, accessToken, safeEqual } from "@/lib/access";
+import { ACCESS_COOKIE, isOpenDevMode, readAuthConfig, verifySessionToken } from "@/lib/access";
 
 /**
- * Access gate. When APP_ACCESS_PASSWORD is set, every page and API route requires the access cookie,
- * so nobody can trigger paid provider calls or push to the CRM anonymously. The Inngest endpoint is
- * exempt because the Inngest SDK verifies request signatures itself (INNGEST_SIGNING_KEY).
+ * Access gate (first line of defence; mutation handlers re-check via `requireReviewer`).
+ * Every page and API route requires a signed reviewer session. Exempt: the login page/endpoint and
+ * the Inngest endpoint (the SDK verifies request signatures with INNGEST_SIGNING_KEY itself).
+ * Fails closed when auth is not configured outside local development.
  */
 export async function proxy(request: NextRequest) {
-  const password = process.env.APP_ACCESS_PASSWORD;
-  if (!password) return NextResponse.next();
-
   const { pathname } = request.nextUrl;
-  if (pathname === "/login" || pathname === "/api/auth/login" || pathname.startsWith("/api/inngest")) return NextResponse.next();
+  const isApi = pathname.startsWith("/api/");
 
-  const cookie = request.cookies.get(ACCESS_COOKIE)?.value ?? "";
-  if (cookie && safeEqual(cookie, await accessToken(password))) return NextResponse.next();
+  if (pathname.startsWith("/api/inngest")) return NextResponse.next();
+  if (isOpenDevMode()) return NextResponse.next();
 
-  if (pathname.startsWith("/api/")) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = readAuthConfig();
+  if (!auth.configured) {
+    const body = { error: "Access control is not configured on this deployment." };
+    return isApi ? NextResponse.json(body, { status: 503 }) : new NextResponse(body.error, { status: 503 });
+  }
+
+  if (pathname === "/login" || pathname === "/api/auth/login") return NextResponse.next();
+
+  if (await verifySessionToken(request.cookies.get(ACCESS_COOKIE)?.value, auth.secret)) return NextResponse.next();
+
+  if (isApi) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const url = new URL("/login", request.url);
   if (pathname !== "/") url.searchParams.set("next", pathname);
   return NextResponse.redirect(url);

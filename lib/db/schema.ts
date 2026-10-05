@@ -243,6 +243,8 @@ export type AccountIntelligenceJson = {
   stackingBonus?: number;
   priorityBreakdown?: { key: string; label: string; points: number; max: number }[];
   topWorkflows?: { workflow: string; fit: number; evidence: string }[];
+  /** Last time external (web) signal adapters ran for this account; drives the refresh cooldown. */
+  externalRefreshAt?: string;
   updatedAt?: string;
 };
 

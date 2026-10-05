@@ -1,4 +1,5 @@
 import { handle, json, readJson } from "@/lib/api";
+import { requireReviewer } from "@/lib/auth";
 import { createEvent, eventDedupeKey, findEventByDedupeKey, listEvents } from "@/lib/db/queries/events";
 import { eventInputSchema } from "@/lib/events/schemas";
 import { inngest } from "@/lib/inngest/client";
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
 /** Manually add an event; source gathering and relevance assessment run as a durable job. */
 export async function POST(request: Request) {
   return handle(async () => {
+    await requireReviewer(request);
     const input = eventInputSchema.parse(await readJson(request));
     const websiteUrl = normalizeUrl(input.websiteUrl);
     const dedupeKey = eventDedupeKey(websiteUrl);

@@ -8,7 +8,7 @@ import type { SignalType } from "./types";
 
 type Db = NeonHttpDatabase<typeof schema>;
 
-export async function updateAccountIntelligenceWithDb(db: Db, companyId: string): Promise<void> {
+export async function updateAccountIntelligenceWithDb(db: Db, companyId: string, opts: { externalRefreshAt?: string } = {}): Promise<void> {
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
   if (!company) return;
 
@@ -60,6 +60,7 @@ export async function updateAccountIntelligenceWithDb(db: Db, companyId: string)
         alignedClusterCount: stackPts > 0 ? Math.min(4, Math.ceil(stackPts / 2)) : 0,
         stackingBonus: stackPts,
         priorityBreakdown: priority.breakdown,
+        externalRefreshAt: opts.externalRefreshAt ?? company.accountIntelligence?.externalRefreshAt,
         updatedAt: new Date().toISOString(),
       },
       updatedAt: new Date(),

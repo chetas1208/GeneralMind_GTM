@@ -37,7 +37,9 @@ export async function rebuildSignalClustersWithDb(db: Db, companyId: string): Pr
         occurredAt: s.occurredAt,
       }),
     );
-    const strength = Math.min(100, Math.round(strengths.reduce((a, b) => a + b, 0) / Math.max(1, list.length) + Math.min(15, list.length * 3)));
+    // Bonus counts distinct signal types (independent evidence), not article count.
+    const distinctTypes = new Set(list.map((s) => s.type)).size;
+    const strength = Math.min(100, Math.round(strengths.reduce((a, b) => a + b, 0) / Math.max(1, list.length) + Math.min(15, (distinctTypes - 1) * 5)));
     const confidence = Math.round(list.reduce((a, s) => a + s.confidence, 0) / list.length);
     const urgency = Math.max(...list.map((s) => s.urgency));
     const times = list.map((s) => s.occurredAt ?? s.discoveredAt);

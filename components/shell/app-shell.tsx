@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { CommandMenu } from "./command-menu";
 import { CompactSidebar } from "./compact-sidebar";
 
@@ -16,6 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   });
   const [searchOpen, setSearchOpen] = useState(false);
+  const pathname = usePathname();
 
   function toggleCollapsed() {
     setCollapsed((c) => {
@@ -28,6 +30,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       return next;
     });
   }
+
+  // The sign-in screen is public: no navigation, search or data hooks until a session exists.
+  if (pathname === "/login") return <main className="min-h-screen px-4">{children}</main>;
 
   return (
     <>

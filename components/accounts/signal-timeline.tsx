@@ -1,5 +1,6 @@
 import { signalTypeLabel } from "@/lib/gtm-present";
 import { formatRelative } from "@/lib/format";
+import { safeHref } from "@/lib/safe-url";
 
 export function SignalTimeline({
   items,
@@ -32,7 +33,7 @@ export function SignalTimeline({
           <p className="mt-1 font-medium text-[13px]">{s.title}</p>
           <p className="text-xs text-muted-foreground line-clamp-2">{s.summary}</p>
           {s.sourceUrl && (
-            <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[11px] text-sky-400 hover:underline">
+            <a href={safeHref(s.sourceUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[11px] text-sky-400 hover:underline">
               Open source ↗
             </a>
           )}

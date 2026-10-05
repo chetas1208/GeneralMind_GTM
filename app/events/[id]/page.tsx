@@ -16,6 +16,7 @@ import { listLeads } from "@/lib/db/queries/leads";
 import { listRunsForEvent } from "@/lib/db/queries/runs";
 import { toRunDto } from "@/lib/dto";
 import { formatDateRange, formatLocation, formatRelative, humanize } from "@/lib/format";
+import { safeHref } from "@/lib/safe-url";
 
 export const dynamic = "force-dynamic";
 
@@ -75,12 +76,12 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
             <span className="inline-flex items-center gap-1.5"><CalendarDays className="size-3.5" />{formatDateRange(event.startDate, event.endDate)}</span>
             <span className="inline-flex items-center gap-1.5"><MapPin className="size-3.5" />{[event.venue, formatLocation(event)].filter(Boolean).join(" · ")}</span>
             {event.websiteUrl && (
-              <a href={event.websiteUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+              <a href={safeHref(event.websiteUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
                 Official site <ExternalLink className="size-3" />
               </a>
             )}
             {event.registrationUrl && (
-              <a href={event.registrationUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+              <a href={safeHref(event.registrationUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
                 Registration <ExternalLink className="size-3" />
               </a>
             )}
@@ -270,7 +271,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
             <ul className="space-y-3">
               {sources.map((s) => (
                 <li key={s.id} className="text-sm">
-                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline" title={s.url}>
+                  <a href={safeHref(s.url) ?? undefined} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline" title={s.url}>
                     {s.title ?? s.url}
                   </a>
                   <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">

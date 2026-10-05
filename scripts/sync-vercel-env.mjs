@@ -22,6 +22,7 @@ const KEYS = [
   "INNGEST_SIGNING_KEY",
   "NEXT_PUBLIC_APP_URL",
   "APP_ACCESS_PASSWORD",
+  "AUTH_SECRET",
 ];
 
 for (const key of KEYS) {
