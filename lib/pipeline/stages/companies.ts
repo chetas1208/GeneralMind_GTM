@@ -9,7 +9,8 @@ import { COMPANY_PRESCORE_ENRICH_MIN, COMPANY_QUALIFY_MIN } from "@/lib/icp/conf
 import { detectErpSignals, prescoreCompanyPublic, scoreCompany } from "@/lib/scoring/company-score";
 import { detectOperationalSignals } from "@/lib/icp/signals";
 import { getIntelligenceBudget } from "@/lib/intelligence/budget";
-import { normalizeCompanyName, normalizeDomain, sanitizeText } from "@/lib/text";
+import { pickCompanyDomain } from "@/lib/company-domain";
+import { normalizeDomain, sanitizeText } from "@/lib/text";
 import type { RunContext } from "../context";
 import { namesMatch } from "./shared";
 
@@ -18,22 +19,10 @@ const REFRESH_AFTER_MS = 30 * 24 * 3600 * 1000;
 
 const ASSOC_PRIORITY: Record<string, number> = { speaker_company: 0, exhibitor: 1, sponsor: 2, organizer: 3, partner: 4, public_attendance: 5, unknown: 6 };
 
-/** Accept a candidate domain only when its label plausibly belongs to the company. */
-function domainPlausible(name: string, domain: string): boolean {
-  const label = domain.split(".")[0].replace(/[^a-z0-9]/g, "");
-  const compact = normalizeCompanyName(name).replace(/[^a-z0-9]/g, "");
-  if (label.length < 3 || compact.length < 3) return false;
-  return label.includes(compact) || compact.includes(label);
-}
-
 async function resolveDomain(company: CompanyRow): Promise<string | null> {
   if (company.domain) return company.domain;
-  const { results } = await exaSearch({ query: `${company.name} official website`, category: "company", numResults: 4, maxCharacters: 300 });
-  for (const r of results) {
-    const d = normalizeDomain(r.url);
-    if (d && domainPlausible(company.name, d)) return d;
-  }
-  return null;
+  const { results } = await exaSearch({ query: `${company.name} official website`, category: "company", numResults: 5, maxCharacters: 300 });
+  return pickCompanyDomain(company.name, results);
 }
 
 /** Stage C: resolve + enrich promising companies (bounded) and compute deterministic company fit. */
