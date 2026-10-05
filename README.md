@@ -217,6 +217,8 @@ Optional tuning: `MAX_COMPANIES_PER_EVENT`, `MAX_PEOPLE_PER_COMPANY`, `MAX_ENRIC
 
 No GitHub Actions are required or included.
 
+**Production (case study):** https://generalmind-gtm-radar.vercel.app — gated with `APP_ACCESS_PASSWORD` (set only in Vercel, not in Git). After deploy, sync Inngest to `https://generalmind-gtm-radar.vercel.app/api/inngest`.
+
 ---
 
 ## Testing
