@@ -17,10 +17,10 @@ export function MomentumChart({ series }: { series: MomentumSeries }) {
   const delta = series.deltaPct;
 
   return (
-    <section data-tour="momentum" className="rounded-xl border border-border/60 bg-card/40 p-4 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.45)]">
+    <section className="rounded-xl border border-border/60 bg-card/40 p-4 shadow-[0_12px_40px_-24px_rgba(0,0,0,0.45)]">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
-          <h2 className="text-sm font-semibold">Opportunity momentum</h2>
+          <h2 data-tour="momentum" className="text-sm font-semibold">Opportunity momentum</h2>
           <MetricInfo metric="momentum" />
         </div>
         <div className="flex gap-1 text-[11px]">

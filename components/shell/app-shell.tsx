@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <div className="flex min-h-screen w-full">
         <CompactSidebar collapsed={collapsed} onToggle={toggleCollapsed} onSearch={() => setSearchOpen(true)} />
-        <main className="min-w-0 flex-1 overflow-x-hidden">
+        <main className="min-w-0 flex-1 overflow-x-clip">
           <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>

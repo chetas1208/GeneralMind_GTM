@@ -136,8 +136,8 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
         <>
           <MomentumChart series={series} />
 
-          <section data-tour="drivers">
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why momentum changed</h2>
+          <section>
+            <h2 data-tour="drivers" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why momentum changed</h2>
             <p className="mb-2 max-w-2xl text-sm text-muted-foreground">{narrative}</p>
             {drivers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No new review-ready opportunities in this window yet.</p>
@@ -156,8 +156,8 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
-            <section data-tour="trace">
-              <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top opportunities</h2>
+            <section>
+              <h2 data-tour="trace" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top opportunities</h2>
               {topOpps.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No review-ready opportunities yet. Research an event to surface people.</p>
               ) : (
@@ -204,8 +204,8 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
             <Link href={next.href} className="mt-2 inline-block text-sm text-sky-400 hover:underline">{next.cta} →</Link>
           </section>
 
-          <section data-tour="events" className="space-y-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming events</h2>
+          <section className="space-y-2">
+            <h2 data-tour="events" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming events</h2>
             {rankedEvents.length === 0 ? (
               <p className="text-sm text-muted-foreground">No events on Radar yet.</p>
             ) : (
