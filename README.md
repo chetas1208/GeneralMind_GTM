@@ -62,7 +62,7 @@ Plain-text version: `SIGNAL → ACCOUNT → PERSON → EVIDENCE → OPPORTUNITY 
 
 | Surface | Purpose |
 | --- | --- |
-| **Radar** (`/radar`) | Market signal radar: top opportunities by account priority, upcoming events, recent signals, *Refresh intelligence*. Toggle **Table \| Graph** for a live intelligence graph of market relationships. |
+| **Radar** (`/radar`) | Operating view: opportunity momentum, why it changed, top opportunities, funnel, upcoming events (why they matter), recent activity, and one next action. Relationship graphs are a secondary **Trace** / *Explore relationships* tool. |
 | **Leads** (`/leads`) | Review queue with search and filters (event, persona, industry, score, attendance). Lead detail shows the score breakdown, attendance statement, evidence, notes and approve / reject / push-to-CRM. |
 | **Pipeline** (`/pipeline`) | Leads by review state and live run activity. |
 | Account (`/accounts/[id]`) | Fit and priority, *why now*, signal timeline, likely workflows, relevant people. Opened from Radar, Leads and search. |

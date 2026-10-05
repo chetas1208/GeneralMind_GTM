@@ -286,7 +286,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
         </section>
       )}
 
-      {tab === "graph" && (
+      {tab === "trace" && (
         <section className="space-y-2">
           <p className="text-xs text-muted-foreground">
             Live intelligence graph for this event — companies, people, evidence, and opportunities sourced from Neon.
