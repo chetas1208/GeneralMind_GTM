@@ -82,7 +82,8 @@ export function chat(req: ChatRequest): Promise<ChatResult> {
           log.warn("chat failed", { kind: err.kind, status: err.status, attempt });
           throw err;
         }
-        const backoff = Math.min(1_000 * 2 ** attempt, 10_000) + Math.random() * 400;
+        const base = err.kind === "rate_limit" ? 2_000 : 1_000; // provider rate limits need a longer breather
+        const backoff = Math.min(base * 2 ** attempt, 15_000) + Math.random() * 400;
         log.warn("chat retry", { kind: err.kind, status: err.status, attempt, backoffMs: Math.round(backoff) });
         await sleep(backoff);
       }
