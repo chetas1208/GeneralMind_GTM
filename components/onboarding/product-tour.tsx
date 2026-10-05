@@ -28,15 +28,15 @@ const STEPS: Array<Step & { label: string }> = [
     placement: "bottom",
   },
   {
-    target: "[data-tour='events']",
-    label: "Find the right moments",
-    content: "Events are ranked by relevance. Each one explains why it matters and what has already been found.",
-    placement: "bottom",
-  },
-  {
     target: "[data-tour='trace']",
     label: "Open a person to see why",
     content: "Open a lead to see the evidence and the short trace connecting the account, person, and event.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='events']",
+    label: "Find the right moments",
+    content: "Events are ranked by relevance. Each one explains why it matters and what has already been found.",
     placement: "bottom",
   },
   {
