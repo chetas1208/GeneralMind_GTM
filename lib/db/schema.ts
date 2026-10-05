@@ -560,6 +560,15 @@ export const sourceRuns = pgTable(
   (t) => [index("source_runs_event_idx").on(t.eventId), index("source_runs_status_idx").on(t.status)],
 );
 
+/** One row per UTC day. Written when scores change and when Radar loads, never by cron. */
+export const metricSnapshots = pgTable("metric_snapshots", {
+  day: date("day").primaryKey(),
+  momentum: integer("momentum").notNull(),
+  quality: integer("quality").notNull(),
+  volume: integer("volume").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /* -------------------------------------------------------------------------- */
 /* Relations                                                                  */
 /* -------------------------------------------------------------------------- */

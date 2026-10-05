@@ -8,6 +8,7 @@ import { MomentumChart } from "@/components/radar/momentum-chart";
 import { ProductTour } from "@/components/onboarding/product-tour";
 import { loadActivity } from "@/lib/analytics/activity";
 import { loadDrivers } from "@/lib/analytics/drivers";
+import { explainDrivers } from "@/lib/analytics/narrative";
 import { loadFunnel } from "@/lib/analytics/funnel";
 import { loadMomentum } from "@/lib/analytics/momentum";
 import { pickNextAction } from "@/lib/analytics/next-action";
@@ -62,6 +63,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
     loadActivity(8),
   ]);
 
+  const narrative = await explainDrivers(drivers, series.deltaPct);
   const canSource = isConfigured("EXA_API_KEY") && isConfigured("NVIDIA_API_KEY");
   const reviewReady = counts.needs_review ?? 0;
   const high = topOpps.filter((l) => l.priorityScore >= 80).length;
@@ -136,6 +138,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
 
           <section data-tour="drivers">
             <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why momentum changed</h2>
+            <p className="mb-2 max-w-2xl text-sm text-muted-foreground">{narrative}</p>
             {drivers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No new review-ready opportunities in this window yet.</p>
             ) : (

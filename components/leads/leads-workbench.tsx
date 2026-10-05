@@ -220,13 +220,27 @@ export function LeadsWorkbench({
 
         {items.length === 0 ? (
           <div className="rounded-xl border border-dashed p-10 text-center">
-            <p className="font-medium">No leads match</p>
-            <p className="mt-1 text-muted-foreground">
-              <Link href="/radar" className="underline">
-                Open Radar
-              </Link>{" "}
-              and source leads from an event.
-            </p>
+            {viewKey === "review" && !filters.q && !filters.eventId ? (
+              <>
+                <p className="font-medium">No review-ready opportunities</p>
+                <p className="mt-1 text-muted-foreground">
+                  Source an event or refresh market intelligence. People appear only after their account, role and evidence clear the qualification bar.
+                </p>
+                <Link href="/radar" className="mt-3 inline-block text-sm text-sky-400 hover:underline">
+                  Go to Radar
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="font-medium">No leads match</p>
+                <p className="mt-1 text-muted-foreground">
+                  <Link href="/radar" className="underline">
+                    Open Radar
+                  </Link>{" "}
+                  and research an event.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <>

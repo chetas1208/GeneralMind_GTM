@@ -6,6 +6,7 @@ import { workflowLabel } from "@/lib/icp/workflows";
 import { formatDateRange, formatLocation } from "@/lib/format";
 import { signalTypeLabel } from "@/lib/gtm-present";
 import type { GraphQueryParams, GraphViewModel } from "./types";
+import { pruneGraph } from "./prune";
 import { GraphAccumulator, edgeId, nodeId, workflowNodeId } from "./transforms";
 import { listEvents } from "@/lib/db/queries/events";
 import {
@@ -165,8 +166,14 @@ function linkCompanyEvent(
   });
 }
 
-async function addCompanyIntelligence(acc: GraphAccumulator, companyId: string, opportunityLeadId?: string) {
-  const sigs = await fetchCompanySignals(companyId, MAX_SIGNALS);
+async function addCompanyIntelligence(
+  acc: GraphAccumulator,
+  companyId: string,
+  opportunityLeadId?: string,
+  opts?: { maxSignals?: number },
+) {
+  const sigs = await fetchCompanySignals(companyId, opts?.maxSignals ?? MAX_SIGNALS);
+  const hintsPerSignal = (opts?.maxSignals ?? MAX_SIGNALS) <= 2 ? 1 : 2;
   for (const s of sigs) {
     const sid = nodeId("signal", s.id);
     acc.addNode({
@@ -187,7 +194,7 @@ async function addCompanyIntelligence(acc: GraphAccumulator, companyId: string, 
       verification: s.confidence >= 75 ? "verified" : "inferred",
       explanation: s.summary.slice(0, 200),
     });
-    for (const hint of s.workflowHints.slice(0, 2)) {
+    for (const hint of s.workflowHints.slice(0, hintsPerSignal)) {
       const wid = workflowNodeId(companyId, hint);
       acc.addNode({
         id: wid,
@@ -219,7 +226,7 @@ async function addCompanyIntelligence(acc: GraphAccumulator, companyId: string, 
   }
 
   const clusters = await fetchSignalClusters(companyId);
-  for (const c of clusters.slice(0, 4)) {
+  for (const c of clusters.slice(0, (opts?.maxSignals ?? MAX_SIGNALS) <= 2 ? 1 : 4)) {
     const wid = workflowNodeId(companyId, c.workflow);
     if (!acc.hasNode(wid)) {
       acc.addNode({
@@ -301,7 +308,7 @@ export async function buildOpportunityGraph(entityId: string): Promise<GraphView
       verification: "inferred",
       explanation: "Person is associated with this account in the lead record.",
     });
-    await addCompanyIntelligence(acc, detail.company.id, detail.lead.id);
+    await addCompanyIntelligence(acc, detail.company.id, detail.lead.id, { maxSignals: 2 });
   }
 
   linkPersonEvent(
@@ -320,9 +327,9 @@ export async function buildOpportunityGraph(entityId: string): Promise<GraphView
     }
   }
 
-  addEvidenceNodes(acc, detail.evidence, detail.lead.id);
+  addEvidenceNodes(acc, detail.evidence.slice(0, 2), detail.lead.id);
 
-  for (const w of detail.lead.opportunityHypothesis?.workflows ?? []) {
+  for (const w of (detail.lead.opportunityHypothesis?.workflows ?? []).slice(0, 1)) {
     if (!detail.company) continue;
     const wid = workflowNodeId(detail.company.id, w);
     acc.addNode({
@@ -364,7 +371,7 @@ export async function buildOpportunityGraph(entityId: string): Promise<GraphView
     });
   }
 
-  return finalize(acc, "opportunity", root);
+  return pruneGraph(finalize(acc, "opportunity", root), 15);
 }
 
 export async function buildEventGraph(entityId: string, runActive = false): Promise<GraphViewModel | null> {

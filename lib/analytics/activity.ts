@@ -84,3 +84,53 @@ export async function loadActivity(limit = 12): Promise<ActivityItem[]> {
 
   return items.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).slice(0, limit);
 }
+
+export async function loadAccountActivity(companyId: string, limit = 20): Promise<ActivityItem[]> {
+  const db = getDb();
+  const [sigs, reviews] = await Promise.all([
+    db
+      .select({
+        id: signals.id,
+        type: signals.type,
+        title: signals.title,
+        at: signals.discoveredAt,
+      })
+      .from(signals)
+      .where(eq(signals.companyId, companyId))
+      .orderBy(desc(signals.discoveredAt))
+      .limit(12),
+    db
+      .select({
+        id: reviewActions.id,
+        action: reviewActions.action,
+        at: reviewActions.createdAt,
+        name: people.fullName,
+        leadId: eventLeads.id,
+      })
+      .from(reviewActions)
+      .innerJoin(eventLeads, eq(eventLeads.id, reviewActions.eventLeadId))
+      .innerJoin(people, eq(people.id, eventLeads.personId))
+      .where(eq(eventLeads.companyId, companyId))
+      .orderBy(desc(reviewActions.createdAt))
+      .limit(12),
+  ]);
+  const items: ActivityItem[] = [
+    ...sigs.map((s) => ({
+      id: `sig-${s.id}`,
+      type: "signal_discovered",
+      title: signalTypeLabel(s.type),
+      description: s.title.slice(0, 140),
+      occurredAt: s.at.toISOString(),
+      href: `/accounts/${companyId}`,
+    })),
+    ...reviews.map((r) => ({
+      id: `review-${r.id}`,
+      type: r.action,
+      title: r.action === "approve" ? `${r.name} approved` : r.action === "reject" ? `${r.name} passed` : `${r.name} updated`,
+      description: "Review on this account",
+      occurredAt: r.at.toISOString(),
+      href: `/leads?lead=${r.leadId}`,
+    })),
+  ];
+  return items.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt)).slice(0, limit);
+}

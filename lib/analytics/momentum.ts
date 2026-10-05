@@ -1,7 +1,8 @@
 import "server-only";
 import { and, gte, inArray, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { eventLeads, events } from "@/lib/db/schema";
+import { eventLeads, events, metricSnapshots } from "@/lib/db/schema";
+import { refreshMetricSnapshots } from "./snapshots";
 import type { MomentumPoint, MomentumSeries } from "./types";
 
 const ACTIVE = ["needs_review", "approved", "hubspot_synced"] as const;
@@ -14,6 +15,11 @@ const ACTIVE = ["needs_review", "approved", "hubspot_synced"] as const;
 export async function loadMomentum(range: "7" | "30" | "90"): Promise<MomentumSeries> {
   const days = Number(range);
   const db = getDb();
+  try {
+    await refreshMetricSnapshots();
+  } catch {
+    /* snapshot table not migrated yet — chart still uses live lead rows */
+  }
   const since = new Date(Date.now() - days * 86_400_000);
   const prevSince = new Date(Date.now() - days * 2 * 86_400_000);
 
@@ -31,17 +37,34 @@ export async function loadMomentum(range: "7" | "30" | "90"): Promise<MomentumSe
     .groupBy(sql`to_char(${eventLeads.createdAt} at time zone 'UTC', 'YYYY-MM-DD')`)
     .orderBy(sql`1`);
 
+  let snaps: { day: string; momentum: number; quality: number; volume: number }[] = [];
+  try {
+    snaps = await db
+      .select({
+        day: sql<string>`to_char(${metricSnapshots.day}, 'YYYY-MM-DD')`,
+        momentum: metricSnapshots.momentum,
+        quality: metricSnapshots.quality,
+        volume: metricSnapshots.volume,
+      })
+      .from(metricSnapshots)
+      .where(gte(metricSnapshots.day, prevSince.toISOString().slice(0, 10)));
+  } catch {
+    snaps = [];
+  }
+  const snapByDay = new Map(snaps.map((s) => [s.day, s]));
+
   const byDay = new Map(rows.map((r) => [r.day, r]));
   const points: MomentumPoint[] = [];
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(Date.now() - i * 86_400_000);
     const key = d.toISOString().slice(0, 10);
     const row = byDay.get(key);
+    const snap = snapByDay.get(key);
     points.push({
       date: key,
-      momentum: Math.round(row?.momentum ?? 0),
-      quality: Math.round(row?.quality ?? 0),
-      volume: row?.volume ?? 0,
+      momentum: snap?.momentum ?? Math.round(row?.momentum ?? 0),
+      quality: snap?.quality ?? Math.round(row?.quality ?? 0),
+      volume: snap?.volume ?? row?.volume ?? 0,
       driver: row?.volume ? `${row.volume} opportunities${row.eventName ? ` · ${row.eventName}` : ""}` : "No new review-ready opportunities",
     });
   }

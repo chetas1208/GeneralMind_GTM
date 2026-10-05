@@ -88,6 +88,8 @@ export async function runScoreStage(ctx: RunContext, event: EventRow): Promise<b
     .map((r) => r.lead.id);
   ctx.cursor.explainDone = 0;
   ctx.note(`Scored ${rows.length} leads deterministically · ${qualified} at or above the review threshold (${LEAD_QUALIFY_THRESHOLD}/100)`);
+  const { refreshMetricSnapshots } = await import("@/lib/analytics/snapshots");
+  await refreshMetricSnapshots().catch(() => undefined);
   return true;
 }
 

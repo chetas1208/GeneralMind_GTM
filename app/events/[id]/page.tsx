@@ -155,8 +155,18 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
               )}
             </div>
             {leads.items.length === 0 ? (
-              <div className="rounded-lg border border-dashed bg-card p-6 text-center text-muted-foreground">
-                No qualified leads yet. Use <strong>Source leads</strong> to discover companies, verify evidence, and score decision-makers.
+              <div className="rounded-lg border border-dashed bg-card p-6 text-center">
+                {companies.length === 0 ? (
+                  <>
+                    <p className="font-medium">This event hasn&apos;t been researched yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      We&apos;ll identify participating companies, find relevant decision-makers and verify their relationship to the event.
+                    </p>
+                    <p className="mt-3 text-sm text-muted-foreground">Use Research event above to start.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Research finished, but nobody cleared the review bar yet.</p>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto rounded-lg border bg-card">
