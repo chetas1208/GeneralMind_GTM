@@ -7,6 +7,7 @@ import {
   Controls,
   MiniMap,
   ReactFlow,
+  ReactFlowProvider,
   useEdgesState,
   useNodesState,
   type Edge,
@@ -69,7 +70,11 @@ export type GraphViewProps = {
 
 export function GraphView(props: GraphViewProps) {
   const key = `${props.scope}-${props.entityId ?? ""}-${props.runId ?? ""}`;
-  return <GraphViewCanvas key={key} {...props} />;
+  return (
+    <ReactFlowProvider>
+      <GraphViewCanvas key={key} {...props} />
+    </ReactFlowProvider>
+  );
 }
 
 function GraphViewCanvas({ scope, entityId, runId, trace, className, minHeight = 420 }: GraphViewProps) {
@@ -235,7 +240,10 @@ function GraphViewCanvas({ scope, entityId, runId, trace, className, minHeight =
   const showMinimap = raw.nodes.length > 18;
 
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-border/60 bg-background/40 ${className ?? ""}`} style={{ minHeight }}>
+    <div
+      className={`relative w-full overflow-hidden rounded-xl border border-border/60 bg-background/40 ${className ?? ""}`}
+      style={{ height: minHeight, minHeight }}
+    >
       <div className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2">
         {trace && raw.rootId && (
           <p className="rounded-md bg-card/90 px-2 py-1 text-[10px] text-muted-foreground backdrop-blur-sm">
@@ -259,6 +267,7 @@ function GraphViewCanvas({ scope, entityId, runId, trace, className, minHeight =
         </div>
       </div>
       <ReactFlow
+        className="h-full w-full"
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -268,6 +277,7 @@ function GraphViewCanvas({ scope, entityId, runId, trace, className, minHeight =
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
         fitView
+        fitViewOptions={{ padding: 0.2 }}
         minZoom={0.2}
         maxZoom={1.4}
         proOptions={{ hideAttribution: true }}

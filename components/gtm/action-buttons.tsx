@@ -47,29 +47,50 @@ export function SourceLeadsButton({ eventId, disabled, label = "Source Leads", v
   );
 }
 
-export function DiscoverEventsButton({ disabled }: { disabled?: boolean }) {
+export function DiscoverEventsButton({
+  disabled,
+  disabledReason,
+}: {
+  disabled?: boolean;
+  disabledReason?: string;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   return (
-    <div className="flex items-center gap-2">
-      {error && <span className="text-xs text-destructive">{error}</span>}
-      <Button
-        size="sm"
-        variant="outline"
-        disabled={disabled || pending}
-        onClick={() =>
-          start(async () => {
-            setError(null);
-            const r = await post("/api/events/discover");
-            if (!r.ok) setError(r.error ?? "Failed");
-            router.refresh();
-          })
-        }
-      >
-        {pending ? <Loader2 className="animate-spin" /> : <Search />}
-        Discover events
-      </Button>
+    <div className="flex max-w-md flex-col items-end gap-1">
+      <div className="flex items-center gap-2">
+        {info && <span className="text-xs text-muted-foreground">{info}</span>}
+        {error && <span className="text-xs text-destructive">{error}</span>}
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={disabled || pending}
+          title={disabled ? disabledReason : undefined}
+          onClick={() =>
+            start(async () => {
+              setError(null);
+              setInfo(null);
+              const r = await post("/api/events/discover");
+              if (!r.ok) {
+                setError(r.error ?? "Failed to start discovery");
+                return;
+              }
+              const d = r.data as { alreadyActive?: boolean; run?: { id?: string } };
+              if (d.alreadyActive) setInfo("Discovery already in progress");
+              else setInfo("Discovery started");
+              router.refresh();
+            })
+          }
+        >
+          {pending ? <Loader2 className="animate-spin" /> : <Search />}
+          Discover events
+        </Button>
+      </div>
+      {disabled && disabledReason && (
+        <span className="text-right text-[11px] text-muted-foreground">{disabledReason}</span>
+      )}
     </div>
   );
 }
@@ -128,13 +149,27 @@ export function RefreshAccountButton({ companyId }: { companyId: string }) {
 export function EventStatusButtons({ eventId, status }: { eventId: string; status: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const set = (next: string) =>
     start(async () => {
-      await fetch(`/api/events/${eventId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: next }) });
-      router.refresh();
+      setError(null);
+      try {
+        const res = await fetch(`/api/events/${eventId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: next }),
+        });
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        if (!res.ok) setError(data.error ?? `Update failed (${res.status})`);
+        else router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Network error");
+      }
     });
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex flex-col items-end gap-1">
+      {error && <span className="text-[10px] text-destructive">{error}</span>}
+      <div className="flex items-center gap-1">
       {status !== "selected" && (
         <Button size="xs" variant="outline" disabled={pending} onClick={() => set("selected")}>
           Add to Radar
@@ -150,6 +185,7 @@ export function EventStatusButtons({ eventId, status }: { eventId: string; statu
           Remove
         </Button>
       )}
+      </div>
     </div>
   );
 }

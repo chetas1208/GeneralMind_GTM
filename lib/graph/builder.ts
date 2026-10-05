@@ -7,6 +7,7 @@ import { formatDateRange, formatLocation } from "@/lib/format";
 import { signalTypeLabel } from "@/lib/gtm-present";
 import type { GraphQueryParams, GraphViewModel } from "./types";
 import { GraphAccumulator, edgeId, nodeId, workflowNodeId } from "./transforms";
+import { listEvents } from "@/lib/db/queries/events";
 import {
   associationEdgeType,
   associationVerification,
@@ -524,6 +525,22 @@ export async function buildMarketGraph(): Promise<GraphViewModel> {
       confidence: s.confidence,
       verification: s.confidence >= 75 ? "verified" : "inferred",
     });
+  }
+
+  if (acc.snapshot().nodes.length === 0) {
+    const selected = await listEvents({ statuses: ["selected"] });
+    for (const event of selected.slice(0, 8)) {
+      addEventNode(acc, event, event.leadCount ?? 0);
+    }
+    const withLeads = await fetchMarketSlice({ minScore: 0, limitEvents: 4, limitLeads: 10 });
+    for (const { event, leadCount } of withLeads.topEvents) addEventNode(acc, event, leadCount);
+    for (const r of withLeads.leads) {
+      addEventNode(acc, r.event);
+      addPersonNode(acc, r.person, r.company?.name);
+      addOpportunityNode(acc, r.lead);
+      if (r.company) addCompanyNode(acc, r.company);
+      linkPersonEvent(acc, r.person.id, r.event.id, r.lead.attendanceType, r.lead.attendanceConfidence);
+    }
   }
 
   return finalize(acc, "market");
