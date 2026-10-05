@@ -35,6 +35,10 @@ export function SourceLeadsButton({ eventId, disabled, label = "Source Leads", v
             setError(null);
             const r = await post(`/api/events/${eventId}/source`);
             if (!r.ok) setError(r.error ?? "Failed");
+            else {
+              const runId = (r.data as { run?: { id?: string } })?.run?.id;
+              if (runId) await fetch(`/api/runs/${runId}/tick`, { method: "POST" });
+            }
             router.refresh();
           })
         }
@@ -80,6 +84,8 @@ export function DiscoverEventsButton({
               const d = r.data as { alreadyActive?: boolean; run?: { id?: string } };
               if (d.alreadyActive) setInfo("Discovery already in progress");
               else setInfo("Discovery started");
+              const runId = d.run?.id;
+              if (runId) await fetch(`/api/runs/${runId}/tick`, { method: "POST" });
               router.refresh();
             })
           }

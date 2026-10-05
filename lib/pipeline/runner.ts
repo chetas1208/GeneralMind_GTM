@@ -1,5 +1,5 @@
 import "server-only";
-import { acquireLease, createRun, findActiveRun, getRun, type RunRow } from "@/lib/db/queries/runs";
+import { acquireLease, createRun, findActiveRun, getRun, reclaimStaleActiveRun, type RunRow } from "@/lib/db/queries/runs";
 import { createLogger } from "@/lib/logger";
 import { RunContext, type StepHandler } from "./context";
 import { discoveryStep } from "./discovery";
@@ -16,6 +16,7 @@ function handlerFor(run: RunRow): StepHandler {
 
 /** Create (or return the already-active) run. Idempotent per event + kind. */
 export async function startRun(input: { eventId: string | null; kind: "lead_sourcing" | "event_discovery" }) {
+  await reclaimStaleActiveRun(input.eventId, input.kind);
   const active = await findActiveRun(input.eventId, input.kind);
   if (active) return { run: active, created: false };
   const run = await createRun(input);

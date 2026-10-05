@@ -16,7 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/runs/[id]/r
     if (active) return json({ run: active, alreadyActive: true });
     const reopened = await reopenRun(id);
     if (!reopened) throw new HttpError(409, "Run changed state; refresh and try again");
-    await dispatchRun(reopened);
-    return json({ run: reopened }, { status: 202 });
+    const dispatch = await dispatchRun(reopened);
+    return json({ run: reopened, dispatch }, { status: 202 });
   });
 }

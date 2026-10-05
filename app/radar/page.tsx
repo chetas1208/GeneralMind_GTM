@@ -30,14 +30,10 @@ export default async function RadarPage() {
     listRecentSignals(12),
   ]);
   const canSource = isConfigured("EXA_API_KEY") && isConfigured("NVIDIA_API_KEY");
-  const canDiscover =
-    canSource &&
-    ((isConfigured("INNGEST_EVENT_KEY") && isConfigured("INNGEST_SIGNING_KEY")) || isConfigured("INNGEST_DEV"));
   let discoverDisabledReason: string | undefined;
   if (!canSource) discoverDisabledReason = "Requires EXA and NVIDIA API keys in this environment.";
-  else if (!canDiscover) discoverDisabledReason = "Requires Inngest keys (or INNGEST_DEV locally) to run discovery.";
   else if (activeDiscovery)
-    discoverDisabledReason = `Discovery already running — open run ${activeDiscovery.id.slice(0, 8)}… on Pipeline or wait for it to finish.`;
+    discoverDisabledReason = `Discovery already running — cancel it on Pipeline or wait for it to finish.`;
 
   const qualified = (counts.needs_review ?? 0) + (counts.approved ?? 0) + (counts.hubspot_synced ?? 0);
   const highConfidence = counts.needs_review ?? 0; // proxy: queue is pre-scored ≥55
@@ -60,7 +56,7 @@ export default async function RadarPage() {
         <div className="flex flex-wrap items-center gap-2">
           <RefreshIntelligenceButton />
           <DiscoverEventsButton
-            disabled={Boolean(activeDiscovery) || !canDiscover}
+            disabled={Boolean(activeDiscovery) || !canSource}
             disabledReason={discoverDisabledReason}
           />
         </div>

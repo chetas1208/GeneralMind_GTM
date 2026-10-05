@@ -16,7 +16,7 @@ export async function POST(request: Request, ctx: RouteContext<"/api/events/[id]
     const event = await getEvent(id);
     if (!event) throw new HttpError(404, "Event not found");
     const { run, created } = await startRun({ eventId: id, kind: "lead_sourcing" });
-    if (created) await dispatchRun(run);
-    return json({ run, alreadyActive: !created }, { status: created ? 202 : 200 });
+    const dispatch = created ? await dispatchRun(run) : { dispatched: true };
+    return json({ run, alreadyActive: !created, dispatch }, { status: created ? 202 : 200 });
   });
 }

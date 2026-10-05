@@ -25,6 +25,20 @@ export async function getRun(id: string): Promise<RunRow | null> {
   return r ?? null;
 }
 
+/** Clear discovery/sourcing slots held by runs that never left queued (Inngest never picked them up). */
+export async function reclaimStaleActiveRun(eventId: string | null, kind: "lead_sourcing" | "event_discovery"): Promise<void> {
+  const active = await findActiveRun(eventId, kind);
+  if (!active || active.status !== "queued") return;
+  const ageMs = Date.now() - new Date(active.updatedAt).getTime();
+  const noProgress = !(active.progress?.steps?.length);
+  const stuck = (noProgress && ageMs > 90_000) || ageMs > 600_000;
+  if (!stuck) return;
+  await markRunFailed(
+    active.id,
+    "Previous run was stuck waiting for the job runner. It was reset — click Discover events again.",
+  );
+}
+
 /** Active (queued/running) run for an event + kind, if any – prevents duplicate concurrent runs. */
 export async function findActiveRun(eventId: string | null, kind: "lead_sourcing" | "event_discovery"): Promise<RunRow | null> {
   const [r] = await getDb()

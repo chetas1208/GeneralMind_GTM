@@ -90,6 +90,7 @@ export function RunProgress({ initial, compact = false, onFinished }: { initial:
 
   const poll = useCallback(async () => {
     try {
+      await fetch(`/api/runs/${run.id}/tick`, { method: "POST" });
       const res = await fetch(`/api/runs/${run.id}`, { cache: "no-store" });
       if (res.ok) setRun((await res.json()).run as RunDto);
     } catch {
@@ -99,8 +100,12 @@ export function RunProgress({ initial, compact = false, onFinished }: { initial:
 
   useEffect(() => {
     if (!active) return;
+    const kick = window.setTimeout(() => void poll(), 0);
     const t = setInterval(poll, 3_000);
-    return () => clearInterval(t);
+    return () => {
+      clearTimeout(kick);
+      clearInterval(t);
+    };
   }, [active, poll]);
 
   useEffect(() => {
@@ -172,7 +177,9 @@ export function RunProgress({ initial, compact = false, onFinished }: { initial:
         })}
       </ol>
       {actionError && <div className="mx-4 mb-3 rounded-md bg-red-50 p-2.5 text-xs text-red-800">{actionError}</div>}
-      {run.status === "queued" && !run.progress.steps.length && <div className="mx-4 mb-3 text-xs text-muted-foreground">Queued. Waiting for the job runner to pick this up…</div>}
+      {run.status === "queued" && !run.progress.steps.length && (
+        <div className="mx-4 mb-3 text-xs text-muted-foreground">Starting discovery — this page advances the run while it is open…</div>
+      )}
       {run.error && (
         <div className="mx-4 mb-3 flex items-start gap-2 rounded-md bg-red-50 p-2.5 text-xs text-red-800">
           <XCircle className="mt-0.5 size-3.5 shrink-0" />

@@ -1,18 +1,28 @@
 import "server-only";
-import { HttpError } from "@/lib/api";
-import { markRunFailed, type RunRow } from "@/lib/db/queries/runs";
+import { getEnv } from "@/lib/env";
+import { type RunRow } from "@/lib/db/queries/runs";
 import { createLogger } from "@/lib/logger";
 import { inngest } from "./client";
 import { eventsDiscoveryRequested, sourceEventRequested } from "./events";
 
 const log = createLogger("dispatch");
 
+export function isInngestDispatchConfigured(): boolean {
+  const env = getEnv();
+  return Boolean(env.INNGEST_EVENT_KEY?.trim() && env.INNGEST_SIGNING_KEY?.trim());
+}
+
+export type DispatchResult = { dispatched: boolean; error?: string };
+
 /**
- * Hand a freshly created (or reopened) run to the durable workflow engine and return immediately.
- * If the event cannot be delivered we fail the run with the real reason instead of leaving a
- * "queued" run that will never start.
+ * Hand a run to Inngest when configured. On failure the run stays queued and the UI poll
+ * (`POST /api/runs/:id/tick`) advances it instead — the button still works without Inngest Cloud.
  */
-export async function dispatchRun(run: RunRow, requestedBy = "operator"): Promise<void> {
+export async function dispatchRun(run: RunRow, requestedBy = "operator"): Promise<DispatchResult> {
+  if (!isInngestDispatchConfigured()) {
+    log.info("inngest not configured; run will advance via client tick", { runId: run.id });
+    return { dispatched: false, error: "Inngest keys not set — advancing from the browser." };
+  }
   const dispatchId = crypto.randomUUID();
   try {
     if (run.kind === "event_discovery") {
@@ -22,10 +32,10 @@ export async function dispatchRun(run: RunRow, requestedBy = "operator"): Promis
       await inngest.send(sourceEventRequested.create({ runId: run.id, eventId: run.eventId, requestedBy, dispatchId }));
     }
     log.info("run dispatched", { runId: run.id, kind: run.kind });
+    return { dispatched: true };
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    log.error("dispatch failed", { runId: run.id, error: message });
-    await markRunFailed(run.id, `Could not hand the run to the job runner: ${message}`);
-    throw new HttpError(502, `Could not start the background job: ${message}`);
+    log.error("dispatch failed; client tick fallback", { runId: run.id, error: message });
+    return { dispatched: false, error: message };
   }
 }
