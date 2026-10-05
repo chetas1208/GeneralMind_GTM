@@ -7,7 +7,6 @@ import { MetricInfo } from "@/components/ui/metric-info";
 import { relevanceBand } from "@/lib/confidence";
 import { GraphView } from "@/components/graph/graph-view";
 import { MomentumChart } from "@/components/radar/momentum-chart";
-import { ProductTour } from "@/components/onboarding/product-tour";
 import { loadActivity } from "@/lib/analytics/activity";
 import { loadDrivers } from "@/lib/analytics/drivers";
 import { explainDrivers } from "@/lib/analytics/narrative";
@@ -90,9 +89,8 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
   });
 
   return (
-    <div data-tour="radar" className="space-y-6">
-      <ProductTour auto />
-      <header className="flex flex-wrap items-end justify-between gap-4">
+    <div className="space-y-6">
+      <header data-tour="radar" className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-base font-semibold tracking-tight">Radar</h1>
           <p className="max-w-xl text-sm text-muted-foreground">Your highest-value GTM signals, opportunities, and upcoming moments.</p>
@@ -133,9 +131,6 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
         <div className="rounded-xl border border-dashed p-10 text-center">
           <p className="font-medium">No market signals yet</p>
           <p data-tour="momentum" className="mt-1 text-sm text-muted-foreground">Start by discovering relevant events. Radar will rank them and identify the ones worth researching.</p>
-          <span data-tour="drivers" className="sr-only">Drivers appear after opportunities exist.</span>
-          <span data-tour="events" className="sr-only">Events appear after discovery.</span>
-          <span data-tour="trace" className="sr-only">Trace lives on a lead.</span>
         </div>
       ) : (
         <>
@@ -161,7 +156,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-[1.4fr_0.8fr]">
-            <section>
+            <section data-tour="trace">
               <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top opportunities</h2>
               {topOpps.length === 0 ? (
                 <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">No review-ready opportunities yet. Research an event to surface people.</p>
@@ -264,7 +259,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
           </section>
 
           <p className="text-[11px] text-muted-foreground">
-            <span data-tour="trace">Need the relationship chain for one record? Open a lead and use Why this opportunity, or{" "}</span>
+            Need the relationship chain for one record? Open a lead and use Why this opportunity, or{" "}
             <Link href="/radar?view=graph" className="underline">explore relationships</Link> (advanced).
           </p>
         </>

@@ -72,7 +72,14 @@ export function CompactSidebar({
         <button
           type="button"
           title="Restart product tour"
-          onClick={() => restartProductTour()}
+          onClick={() => {
+            if (pathname !== "/radar") {
+              sessionStorage.setItem("gm-tour-pending", "1");
+              router.push("/radar");
+              return;
+            }
+            restartProductTour();
+          }}
           className={cn(
             "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground",
             collapsed && "justify-center px-0",

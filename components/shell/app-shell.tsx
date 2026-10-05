@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { ProductTour } from "@/components/onboarding/product-tour";
 import { CommandMenu } from "./command-menu";
 import { CompactSidebar } from "./compact-sidebar";
 
@@ -43,6 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <CommandMenu open={searchOpen} onOpenChange={setSearchOpen} />
+      <ProductTour auto={pathname === "/radar"} />
     </>
   );
 }
