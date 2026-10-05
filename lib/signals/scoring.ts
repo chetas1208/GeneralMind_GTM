@@ -67,7 +67,7 @@ export function computeAccountPriority(input: AccountPriorityInput, now = new Da
   const stackPts = computeSignalStackingBonus(input.signals);
   breakdown.push({ key: "stack", label: "Aligned signals", points: stackPts, max: 5 });
 
-  const contactPts = Math.min(5, input.contactability ? 4 : 0);
+  const contactPts = Math.max(0, Math.min(5, Math.round(input.contactability ?? 0)));
   breakdown.push({ key: "contact", label: "Contactability", points: contactPts, max: 5 });
 
   const neg = input.signals.filter((s) => s.direction === "negative").length;

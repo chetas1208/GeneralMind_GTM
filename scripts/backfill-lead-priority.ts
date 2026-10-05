@@ -39,6 +39,7 @@ async function main() {
       attendanceConfidence: r.lead.attendanceConfidence,
       eventStartDate: r.event.startDate,
       hasWorkEmail: Boolean(r.person.email),
+      hasVerifiedProfile: Boolean(r.person.linkedinUrl),
       signalFrequency,
       reviewStatus: r.lead.status,
     });

@@ -46,6 +46,7 @@ export async function runScoreStage(ctx: RunContext, event: EventRow): Promise<b
       attendanceConfidence: score.attendanceConfidence,
       eventStartDate: event.startDate,
       hasWorkEmail: Boolean(r.person.email),
+      hasVerifiedProfile: Boolean(r.person.linkedinUrl),
       signalFrequency,
       reviewStatus: status,
     });
