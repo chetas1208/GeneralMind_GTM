@@ -19,12 +19,21 @@ describe("contactability in account priority", () => {
 describe("lead priority by contact route", () => {
   const base = { totalScore: 80, attendanceType: "official_speaker" as const, attendanceConfidence: 90, eventStartDate: null, signalFrequency: 1, reviewStatus: "needs_review" as const };
   const p = (x: { hasWorkEmail: boolean; hasVerifiedProfile?: boolean }) => computeLeadPriority({ ...base, ...x } as Parameters<typeof computeLeadPriority>[0]);
-  it("ranks email > verified profile > no route, without double counting", () => {
+  it("ranks verified email > verified profile > no route, without double counting", () => {
     const email = p({ hasWorkEmail: true, hasVerifiedProfile: true });
     const profile = p({ hasWorkEmail: false, hasVerifiedProfile: true });
     const none = p({ hasWorkEmail: false, hasVerifiedProfile: false });
     expect(email - profile).toBe(2);
     expect(profile - none).toBe(3);
     expect(email).toBe(p({ hasWorkEmail: true, hasVerifiedProfile: false }));
+  });
+
+  it("guessed email adds less priority than a verified profile-only route", () => {
+    const base = { totalScore: 80, attendanceType: "official_speaker" as const, attendanceConfidence: 90, eventStartDate: null, signalFrequency: 1, reviewStatus: "needs_review" as const };
+    const guessed = computeLeadPriority({ ...base, hasGuessedWorkEmail: true });
+    const profile = computeLeadPriority({ ...base, hasVerifiedProfile: true });
+    const none = computeLeadPriority({ ...base });
+    expect(guessed - none).toBe(2);
+    expect(profile - none).toBe(3);
   });
 });

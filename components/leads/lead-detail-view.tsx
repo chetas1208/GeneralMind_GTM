@@ -9,6 +9,7 @@ import { SectionBreakdown, type ScoreSection } from "@/components/gtm/score-brea
 import {
   activityLabel,
   confidencePresentation,
+  emailPresentation,
   evidenceSourceLabel,
   evidenceStrength,
   leadStatusLabel,
@@ -117,6 +118,7 @@ export function LeadDetailView({
   const latestSync = syncs[0] ?? null;
   const qual = lead.qualificationDetail;
   const breakdown = lead.scoreBreakdown;
+  const email = emailPresentation(person.email, person.emailStatus);
 
   return (
     <div className={cn("space-y-4", compact && "text-[13px]")}>
@@ -263,8 +265,8 @@ export function LeadDetailView({
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact route</h3>
         <dl className="space-y-1 text-[13px]">
           <dt className="text-muted-foreground">Work email</dt>
-          <dd>
-            {person.email ?? <span className="text-muted-foreground">Not available — never guessed</span>}
+          <dd className={email.clarity === "unverified" ? "text-amber-400/90" : undefined}>
+            {person.email ? email.text : <span className="text-muted-foreground">{email.text}</span>}
           </dd>
           <dt className="text-muted-foreground">Public profile</dt>
           <dd>
@@ -273,7 +275,7 @@ export function LeadDetailView({
                 <a href={safeHref(person.linkedinUrl) ?? undefined} target="_blank" rel="noopener noreferrer" className="text-sky-400 hover:underline">
                   LinkedIn
                 </a>
-                <span className="ml-2 text-[11px] text-muted-foreground">verified against the profile text</span>
+                <span className="ml-2 text-[11px] text-muted-foreground">(verified against profile text)</span>
               </>
             ) : (
               <>

@@ -8,6 +8,7 @@ import { updateCompany } from "@/lib/db/queries/companies";
 import type { QualificationDetailJson } from "@/lib/db/schema";
 import { isNegativePersona, inferOpportunityHypothesis } from "@/lib/icp";
 import { ATTENDANCE_LABEL, CONFIRMED_ATTENDANCE, LEAD_QUALIFY_THRESHOLD } from "@/lib/scoring/config";
+import { isVerifiedEmailStatus } from "@/lib/contact/email-guess";
 import { computeLeadPriority } from "@/lib/intelligence/ranking/lead-priority";
 import { countPersonLeadFrequency } from "@/lib/db/queries/leads";
 import type { RunContext } from "../context";
@@ -45,7 +46,8 @@ export async function runScoreStage(ctx: RunContext, event: EventRow): Promise<b
       attendanceType: r.lead.attendanceType,
       attendanceConfidence: score.attendanceConfidence,
       eventStartDate: event.startDate,
-      hasWorkEmail: Boolean(r.person.email),
+      hasVerifiedWorkEmail: Boolean(r.person.email) && isVerifiedEmailStatus(r.person.emailStatus),
+      hasGuessedWorkEmail: Boolean(r.person.email) && !isVerifiedEmailStatus(r.person.emailStatus),
       hasVerifiedProfile: Boolean(r.person.linkedinUrl),
       signalFrequency,
       reviewStatus: status,

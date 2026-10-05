@@ -9,6 +9,8 @@ import { enrichPerson } from "@/lib/integrations/apollo/enrichment";
 import { classifyTitle } from "@/lib/scoring/persona-score";
 import { getIntelligenceBudget } from "@/lib/intelligence/budget";
 import { isNegativePersona } from "@/lib/icp/exclusions";
+import { isVerifiedEmailStatus } from "@/lib/contact/email-guess";
+import { applyGuessedEmailForLead } from "@/lib/services/guessed-email";
 import { resolveContactRoute } from "@/lib/services/contact-route";
 import { computeLeadScore } from "../scoring";
 import type { RunContext } from "../context";
@@ -27,7 +29,7 @@ const titlesAgree = (a: string, b: string) => {
 
 /**
  * Stage D (second half): spend Apollo credits only on the strongest candidates.
- * No phone numbers, no personal emails, never invents a missing email.
+ * Verified emails from Apollo when available; otherwise pattern guesses are stored as unverified.
  */
 export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<boolean> {
   ctx.setStage("enriching");
@@ -98,7 +100,11 @@ export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<
       confidence: EVIDENCE_CONFIDENCE.enrichment,
     });
     ctx.counts.peopleEnriched += 1;
-    return `${row.person.fullName}: enriched${verifiedEmail ? " (email found)" : " (no verified email available)"}`;
+    if (!verifiedEmail && row.company.domain) {
+      const g = await applyGuessedEmailForLead(leadId);
+      if (g.applied) return `${row.person.fullName}: enriched (guessed email ${g.email}, unverified)`;
+    }
+    return `${row.person.fullName}: enriched${verifiedEmail ? " (verified email)" : " (no email)"}`;
   });
 
   let planBlocked = false;
@@ -121,7 +127,7 @@ export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<
 /**
  * Contact routes without a paid people-data provider: for the strongest leads, find a public
  * profile and accept it only after deterministic verification (see `verifyProfile`).
- * No emails are guessed; leads without a verified route simply have none.
+ * Public profiles when findable; pattern email guesses when domain is known (always unverified).
  */
 async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<boolean> {
   const c = ctx.cursor;
@@ -130,7 +136,12 @@ async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<bo
     const rows = await listEventLeadRows(event.id);
     const evidence = await listEvidenceForLeads(rows.map((r) => r.lead.id));
     const ranked = rows
-      .filter((r) => r.company && !r.person.linkedinUrl && !r.person.email && !isNegativePersona(r.person.title))
+      .filter(
+        (r) =>
+          r.company?.domain &&
+          !isNegativePersona(r.person.title) &&
+          !(r.person.email && isVerifiedEmailStatus(r.person.emailStatus)),
+      )
       .map((r) => ({ id: r.lead.id, prelim: computeLeadScore({ lead: r.lead, person: r.person, company: r.company, evidence: evidence.get(r.lead.id) ?? [], event }).total }))
       .filter((r) => r.prelim >= MIN_PRELIM_SCORE)
       .sort((a, b) => b.prelim - a.prelim)
@@ -138,7 +149,7 @@ async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<bo
     c.enrichQueue = ranked.map((r) => r.id);
     c.enrichDone = 0;
     ctx.counters.enrichTarget = ranked.length;
-    ctx.note(`Contact routes via verified public profiles: ${ranked.length} leads (pre-score ≥ ${MIN_PRELIM_SCORE}). Work emails are not guessed.`);
+    ctx.note(`Contact routes: verified public profiles + unverified email guesses where domain is known (${ranked.length} leads).`);
   }
 
   const queue = c.enrichQueue ?? [];
@@ -146,8 +157,16 @@ async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<bo
   const batch = queue.slice(start, start + PER_STEP);
   const outcomes = await mapSettled(batch, 2, async (leadId) => {
     const res = await resolveContactRoute(leadId);
+    const guess = await applyGuessedEmailForLead(leadId);
     if (res?.status === "found") ctx.counts.peopleEnriched += 1;
-    return res?.status === "found" ? `${leadId.slice(0, 8)}: verified public profile attached` : `${leadId.slice(0, 8)}: no verified profile (${res?.status ?? "missing"})`;
+    if (guess.applied) ctx.counts.peopleEnriched += 1;
+    const parts = [
+      res?.status === "found" ? "verified public profile" : null,
+      guess.applied ? `guessed email ${guess.email} (unverified)` : null,
+    ].filter(Boolean);
+    return parts.length
+      ? `${leadId.slice(0, 8)}: ${parts.join("; ")}`
+      : `${leadId.slice(0, 8)}: no contact route (${res?.status ?? "missing"})`;
   });
   outcomes.forEach((o, i) => {
     if (!o.ok) ctx.note(`Contact route failed for lead ${batch[i].slice(0, 8)}: ${o.error instanceof Error ? o.error.message.slice(0, 160) : String(o.error)}`, "warn");

@@ -20,7 +20,9 @@ import type { PersonRow } from "@/lib/db/queries/people";
 import type { CompanyRow } from "@/lib/db/queries/companies";
 import { createLogger } from "@/lib/logger";
 import { updateAccountIntelligence } from "@/lib/signals/refresh";
+import { isVerifiedEmailStatus } from "@/lib/contact/email-guess";
 import { PROFILE_ROUTE_POINTS } from "@/lib/intelligence/ranking/lead-priority";
+import { applyGuessedEmailForLead } from "@/lib/services/guessed-email";
 import { EVIDENCE_CONFIDENCE } from "@/lib/pipeline/stages/shared";
 import { normalizeLinkedin } from "@/lib/text";
 
@@ -80,14 +82,16 @@ export type ContactRouteResult =
  * Public-web contact route for a lead's person (used when no paid people-data provider is
  * available). Finds a candidate profile, then accepts it only if deterministic checks pass:
  * the extracted role must be quoted verbatim on the page, the name must match, and the current
- * employer must match the lead's company. Emails are never guessed.
+ * employer must match the lead's company. Pattern email guesses run separately when domain is known.
  */
 export async function resolveContactRoute(leadId: string): Promise<ContactRouteResult | null> {
   const lead = await getLeadRow(leadId);
   if (!lead) return null;
   const person = await getPerson(lead.personId);
   if (!person) return null;
-  if (person.email || person.linkedinUrl) return { status: "already_has", linkedinUrl: person.linkedinUrl, email: Boolean(person.email) };
+  if (person.linkedinUrl || (person.email && isVerifiedEmailStatus(person.emailStatus))) {
+    return { status: "already_has", linkedinUrl: person.linkedinUrl, email: Boolean(person.email) };
+  }
 
   const company = lead.companyId ? await getCompany(lead.companyId) : null;
   if (!company) return { status: "no_company" };
@@ -155,6 +159,7 @@ export async function resolveContactRoute(leadId: string): Promise<ContactRouteR
     return { status: "found", linkedinUrl, checked: searched };
   }
 
+  await applyGuessedEmailForLead(leadId);
   log.info("contact route not found", { leadId, checked: searched });
   return { status: "not_found", checked: searched, reasons: [...new Set(reasons)].slice(0, 4) };
 }

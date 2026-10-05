@@ -185,7 +185,15 @@ export type LeadListItem = {
   attendanceConfidence: number;
   status: LeadStatus;
   createdAt: Date;
-  person: { id: string; fullName: string; title: string | null; persona: string | null; email: string | null; linkedinUrl: string | null };
+  person: {
+    id: string;
+    fullName: string;
+    title: string | null;
+    persona: string | null;
+    email: string | null;
+    emailStatus: string | null;
+    linkedinUrl: string | null;
+  };
   company: { id: string; name: string; industry: string | null; domain: string | null } | null;
   event: { id: string; name: string };
   evidenceCount: number;
@@ -239,6 +247,7 @@ export async function listLeads(f: LeadFilters = {}): Promise<{ items: LeadListI
       title: people.title,
       persona: people.persona,
       email: people.email,
+      emailStatus: people.emailStatus,
       linkedinUrl: people.linkedinUrl,
       companyId: companies.id,
       companyName: companies.name,
@@ -280,7 +289,15 @@ export async function listLeads(f: LeadFilters = {}): Promise<{ items: LeadListI
       attendanceConfidence: r.attendanceConfidence,
       status: r.status,
       createdAt: r.createdAt,
-      person: { id: r.personId, fullName: r.fullName, title: r.title, persona: r.persona, email: r.email, linkedinUrl: r.linkedinUrl },
+      person: {
+        id: r.personId,
+        fullName: r.fullName,
+        title: r.title,
+        persona: r.persona,
+        email: r.email,
+        emailStatus: r.emailStatus,
+        linkedinUrl: r.linkedinUrl,
+      },
       company: r.companyId ? { id: r.companyId, name: r.companyName ?? "", industry: r.industry, domain: r.domain } : null,
       event: { id: r.eventId, name: r.eventName },
       evidenceCount: r.evidenceCount,

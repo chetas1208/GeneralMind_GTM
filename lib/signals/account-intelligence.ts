@@ -1,3 +1,4 @@
+import { isVerifiedEmailStatus } from "@/lib/contact/email-guess";
 import { eq } from "drizzle-orm";
 import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { companies, people, signals } from "@/lib/db/schema";
@@ -35,14 +36,15 @@ export async function updateAccountIntelligenceWithDb(db: Db, companyId: string,
   });
 
   const peopleRows = await db.select().from(people).where(eq(people.companyId, companyId));
-  const hasEmail = peopleRows.some((p) => Boolean(p.email));
+  const hasVerifiedEmail = peopleRows.some((p) => Boolean(p.email) && isVerifiedEmailStatus(p.emailStatus));
+  const hasGuessedEmail = peopleRows.some((p) => Boolean(p.email) && !isVerifiedEmailStatus(p.emailStatus));
   const hasProfile = peopleRows.some((p) => Boolean(p.linkedinUrl));
 
   const priority = computeAccountPriority({
     accountFit: fit.total,
     signals: scored,
     // Verified work email is the best route (5); a verified public profile is a usable route (3).
-    contactability: hasEmail ? 5 : hasProfile ? 3 : 0,
+    contactability: hasVerifiedEmail ? 5 : hasGuessedEmail ? 2 : hasProfile ? 3 : 0,
   });
 
   const whyNow = buildWhyNow(scored, company.name);

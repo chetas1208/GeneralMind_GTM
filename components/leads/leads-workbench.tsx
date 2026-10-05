@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, SlidersHorizontal, X } from "lucide-react";
 import { ScoreBadge } from "@/components/gtm/badges";
 import { LeadDetailView, type LeadDetailDto } from "@/components/leads/lead-detail-view";
-import { confidencePresentation, leadStatusLabel, signalLabel } from "@/lib/gtm-present";
+import { confidencePresentation, emailPresentation, leadStatusLabel, signalLabel } from "@/lib/gtm-present";
 import { cn } from "@/lib/utils";
 import type { LeadListItem, LeadSort } from "@/lib/db/queries/leads";
 
@@ -277,7 +277,15 @@ export function LeadsWorkbench({
                       {cols.event && <td className="px-3 py-2 text-xs">{l.event.name}</td>}
                       {cols.industry && <td className="px-3 py-2 text-xs text-muted-foreground">{l.company?.industry ?? "—"}</td>}
                       {cols.persona && <td className="px-3 py-2 text-xs">{l.person.persona ?? "—"}</td>}
-                      {cols.email && <td className="px-3 py-2 text-xs">{l.person.email ?? (l.person.linkedinUrl ? "LinkedIn" : "—")}</td>}
+                      {cols.email && (
+                        <td className="px-3 py-2 text-xs">
+                          {l.person.email
+                            ? emailPresentation(l.person.email, l.person.emailStatus).text
+                            : l.person.linkedinUrl
+                              ? "LinkedIn (verified profile)"
+                              : "—"}
+                        </td>
+                      )}
                       {cols.fit && (
                         <td className="px-3 py-2 font-mono text-[10px] text-muted-foreground">
                           {l.companyFitScore}·{l.personaFitScore}·{l.intentScore}

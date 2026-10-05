@@ -3,6 +3,7 @@ import { daysUntil } from "@/lib/scoring/event-score";
 import type { AttendanceKind } from "@/lib/icp/types";
 
 export const WORK_EMAIL_POINTS = 5;
+export const GUESSED_EMAIL_POINTS = 2;
 export const PROFILE_ROUTE_POINTS = 3;
 
 export type LeadPriorityInput = {
@@ -10,7 +11,10 @@ export type LeadPriorityInput = {
   attendanceType: AttendanceKind;
   attendanceConfidence: number;
   eventStartDate: string | null;
-  hasWorkEmail: boolean;
+  /** @deprecated use hasVerifiedWorkEmail */
+  hasWorkEmail?: boolean;
+  hasVerifiedWorkEmail?: boolean;
+  hasGuessedWorkEmail?: boolean;
   /** A verified public profile is a usable outreach route when no work email is available. */
   hasVerifiedProfile?: boolean;
   signalFrequency: number;
@@ -34,7 +38,10 @@ export function computeLeadPriority(input: LeadPriorityInput, now = new Date()):
 
   p += input.attendanceConfidence * 0.15;
   if (CONFIRMED_ATTENDANCE.has(input.attendanceType)) p += 8;
-  if (input.hasWorkEmail) p += WORK_EMAIL_POINTS;
+  const verifiedEmail =
+    input.hasVerifiedWorkEmail ?? (input.hasWorkEmail === true && !input.hasGuessedWorkEmail);
+  if (verifiedEmail) p += WORK_EMAIL_POINTS;
+  else if (input.hasGuessedWorkEmail) p += GUESSED_EMAIL_POINTS;
   else if (input.hasVerifiedProfile) p += PROFILE_ROUTE_POINTS;
 
   const freq = Math.min(3, input.signalFrequency);

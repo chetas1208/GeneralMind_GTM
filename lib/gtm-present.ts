@@ -1,5 +1,36 @@
+import { GUESSED_EMAIL_STATUS, isVerifiedEmailStatus } from "@/lib/contact/email-guess";
 import { CONFIRMED_ATTENDANCE } from "@/lib/scoring/config";
 import { humanize } from "@/lib/format";
+
+export type FieldClarity = "verified" | "unverified" | "manual" | "inferred" | "unknown";
+
+/** Show values with explicit clarity, e.g. `jane@acme.com (unverified)`. */
+export function fieldWithClarity(value: string, clarity: FieldClarity): string {
+  if (clarity === "verified" || clarity === "unknown") return value;
+  if (clarity === "manual") return `${value} (manual)`;
+  if (clarity === "inferred") return `${value} (inferred)`;
+  return `${value} (unverified)`;
+}
+
+export function emailPresentation(
+  email: string | null | undefined,
+  emailStatus: string | null | undefined,
+): { text: string; clarity: FieldClarity } {
+  if (!email) return { text: "Not available", clarity: "unknown" };
+  if (emailStatus === "manual") return { text: fieldWithClarity(email, "manual"), clarity: "manual" };
+  if (emailStatus === GUESSED_EMAIL_STATUS || emailStatus === "guessed" || emailStatus === "unverified") {
+    return { text: fieldWithClarity(email, "unverified"), clarity: "unverified" };
+  }
+  if (isVerifiedEmailStatus(emailStatus)) return { text: email, clarity: "verified" };
+  return { text: fieldWithClarity(email, "unverified"), clarity: "unverified" };
+}
+
+export function titlePresentation(title: string | null | undefined, source: "event" | "enrichment" | "manual" = "event"): string {
+  if (!title) return "Role unknown";
+  if (source === "enrichment") return fieldWithClarity(title, "verified");
+  if (source === "manual") return fieldWithClarity(title, "manual");
+  return fieldWithClarity(title, "inferred");
+}
 
 /** User-facing lead status — never expose internal enum names. */
 export function leadStatusLabel(status: string): string {
