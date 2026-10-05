@@ -1,4 +1,4 @@
-import { namesMatch } from "@/lib/pipeline/stages/shared";
+import { namesMatch } from "@/lib/names-match";
 import { normalizeCompanyName, normalizeDomain } from "@/lib/text";
 
 /** Hosts that describe a company but are never its own website. */

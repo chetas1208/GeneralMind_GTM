@@ -55,20 +55,4 @@ export const ATTENDANCE_BY_ASSOCIATION: Record<string, AttendanceTypeValue> = {
   unknown: "company_participating",
 };
 
-/** Best-effort company-name similarity used to accept/reject domain and profile matches. */
-export function namesMatch(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s
-      .toLowerCase()
-      .replace(/&/g, " and ")
-      .replace(/\b(incorporated|inc|llc|ltd|limited|corp|corporation|co|company|gmbh|ag|sa|plc|holdings|group|the|usa|north america)\b/g, " ")
-      .replace(/[^a-z0-9 ]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  const x = norm(a);
-  const y = norm(b);
-  if (!x || !y) return false;
-  // Whole-word containment only: "apple" must not match "pineapple logistics".
-  const containsWord = (hay: string, needle: string) => ` ${hay} `.includes(` ${needle} `);
-  return x === y || (x.length >= 4 && containsWord(y, x)) || (y.length >= 4 && containsWord(x, y));
-}
+export { namesMatch } from "@/lib/names-match";

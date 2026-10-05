@@ -1,13 +1,23 @@
 import "server-only";
 import { eq, sql } from "drizzle-orm";
 import { extractProfileRole } from "@/lib/ai/tasks";
-import { isLinkedinProfileUrl, verifyByExperience, verifyByHeadline, verifyProfile, worthReading } from "@/lib/contact/profile-match";
+import {
+  companySearchAliases,
+  isLinkedinProfileUrl,
+  verifyByExperience,
+  verifyByHeadline,
+  verifyProfile,
+  worthReading,
+} from "@/lib/contact/profile-match";
 import { getDb } from "@/lib/db";
 import { getCompany } from "@/lib/db/queries/companies";
 import { addEvidence, getLeadRow } from "@/lib/db/queries/leads";
 import { getPerson, upsertPerson } from "@/lib/db/queries/people";
 import { eventLeads } from "@/lib/db/schema";
-import { exaSearch } from "@/lib/integrations/exa/search";
+import { dedupeByUrl, exaSearch } from "@/lib/integrations/exa/search";
+import type { ExaResult } from "@/lib/integrations/exa/schemas";
+import type { PersonRow } from "@/lib/db/queries/people";
+import type { CompanyRow } from "@/lib/db/queries/companies";
 import { createLogger } from "@/lib/logger";
 import { updateAccountIntelligence } from "@/lib/signals/refresh";
 import { PROFILE_ROUTE_POINTS } from "@/lib/intelligence/ranking/lead-priority";
@@ -15,7 +25,50 @@ import { EVIDENCE_CONFIDENCE } from "@/lib/pipeline/stages/shared";
 import { normalizeLinkedin } from "@/lib/text";
 
 const log = createLogger("contact-route");
-const MAX_CANDIDATES = 2;
+const MAX_CANDIDATES = 3;
+
+async function searchProfileCandidates(
+  person: PersonRow,
+  company: CompanyRow,
+): Promise<{ expected: { fullName: string; companyAliases: string[] }; candidates: ExaResult[]; searched: number }> {
+  const companyAliases = companySearchAliases(company.name, { description: company.description, domain: company.domain });
+  const expected = { fullName: person.fullName, companyAliases };
+  const queries = [
+    `${person.fullName} ${person.title ?? ""} ${company.name}`.trim(),
+    `${person.fullName} ${company.name} linkedin`,
+    `site:linkedin.com/in ${person.fullName} ${company.name}`,
+  ];
+  const stem = company.domain?.split(".")[0];
+  if (stem && stem.length >= 2) queries.push(`site:linkedin.com/in ${person.fullName} ${stem}`);
+
+  const seen = new Set<string>();
+  const merged: ExaResult[] = [];
+  const absorb = (rows: ExaResult[]) => {
+    for (const r of dedupeByUrl(rows)) {
+      const key = r.url.replace(/[#?].*$/, "").replace(/\/$/, "").toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(r);
+    }
+  };
+  for (const query of queries) {
+    const { results } = await exaSearch({ query, category: "people", numResults: 8, maxCharacters: 3_000 });
+    absorb(results);
+  }
+  const { results: linkedinOnly } = await exaSearch({
+    query: person.fullName,
+    includeDomains: ["linkedin.com"],
+    numResults: 10,
+    maxCharacters: 3_000,
+  });
+  absorb(linkedinOnly);
+
+  const candidates = merged
+    .filter((r) => isLinkedinProfileUrl(r.url) && (r.text?.length ?? 0) > 200)
+    .filter((r) => worthReading({ expected, title: r.title, pageText: r.text ?? "" }))
+    .slice(0, MAX_CANDIDATES);
+  return { expected, candidates, searched: merged.filter((r) => isLinkedinProfileUrl(r.url)).length };
+}
 
 export type ContactRouteResult =
   | { status: "found"; linkedinUrl: string; checked: number }
@@ -39,26 +92,13 @@ export async function resolveContactRoute(leadId: string): Promise<ContactRouteR
   const company = lead.companyId ? await getCompany(lead.companyId) : null;
   if (!company) return { status: "no_company" };
 
-  const { results } = await exaSearch({
-    query: `${person.fullName} ${person.title ?? ""} ${company.name}`.trim(),
-    category: "people",
-    numResults: 8,
-    maxCharacters: 3_000,
-  });
-
-  // Deterministic gate first: same name AND the page names the employer. This discards namesakes
-  // before any LLM call (and keeps us well inside the model provider's rate limit).
-  const candidates = results
-    .filter((r) => isLinkedinProfileUrl(r.url) && (r.text?.length ?? 0) > 200)
-    .filter((r) => worthReading({ expected: { fullName: person.fullName, companyName: company.name }, title: r.title, pageText: r.text ?? "" }))
-    .slice(0, MAX_CANDIDATES);
+  const { expected, candidates, searched } = await searchProfileCandidates(person, company);
 
   const reasons: string[] = [];
   if (candidates.length === 0) reasons.push("no profile matched both the name and the employer");
 
   for (const r of candidates) {
     const text = r.text ?? "";
-    const expected = { fullName: person.fullName, companyName: company.name };
 
     // 1) Deterministic: the headline, or a current role in the experience section, names the employer (no LLM).
     // 2) Fallback: the model extracts the role, but its quote must be verbatim AND name the employer.
@@ -112,9 +152,9 @@ export async function resolveContactRoute(leadId: string): Promise<ContactRouteR
       .where(eq(eventLeads.personId, person.id));
     await updateAccountIntelligence(company.id); // contactability feeds account priority
     log.info("contact route found", { leadId, checked: candidates.length });
-    return { status: "found", linkedinUrl, checked: candidates.length };
+    return { status: "found", linkedinUrl, checked: searched };
   }
 
-  log.info("contact route not found", { leadId, checked: candidates.length });
-  return { status: "not_found", checked: candidates.length, reasons: [...new Set(reasons)].slice(0, 4) };
+  log.info("contact route not found", { leadId, checked: searched });
+  return { status: "not_found", checked: searched, reasons: [...new Set(reasons)].slice(0, 4) };
 }

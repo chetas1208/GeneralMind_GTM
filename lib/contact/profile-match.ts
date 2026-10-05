@@ -1,4 +1,4 @@
-import { namesMatch } from "@/lib/pipeline/stages/shared";
+import { namesMatch } from "@/lib/names-match";
 import { findSnippet } from "@/lib/text";
 
 /**
@@ -47,7 +47,7 @@ const NICKNAMES: Record<string, string> = {
 };
 const canonicalFirst = (n: string) => NICKNAMES[n] ?? n;
 
-/** Same last name and the same first name (exact, or a known nickname such as Chris ↔ Christopher). */
+/** Same person: exact last name, known nickname, or abbreviated surname ("Caitlin V." ↔ "Caitlin Vorlicek"). */
 export function personNamesMatch(a: string | null | undefined, b: string | null | undefined): boolean {
   if (!a || !b) return false;
   const x = nameTokens(a);
@@ -55,8 +55,33 @@ export function personNamesMatch(a: string | null | undefined, b: string | null 
   if (x.length < 2 || y.length < 2) return false;
   const [fx, lx] = [x[0], x[x.length - 1]];
   const [fy, ly] = [y[0], y[y.length - 1]];
-  if (lx !== ly) return false;
-  return canonicalFirst(fx) === canonicalFirst(fy);
+  if (canonicalFirst(fx) !== canonicalFirst(fy)) return false;
+  if (lx === ly) return true;
+  const abbrev = (fullLast: string, shortLast: string) => shortLast.length === 1 && fullLast.startsWith(shortLast);
+  return abbrev(lx, ly) || abbrev(ly, lx);
+}
+
+/** Alternate employer strings extracted from firmographics (parenthetical legal names, domain stem, …). */
+export function companySearchAliases(name: string, opts: { description?: string | null; domain?: string | null } = {}): string[] {
+  const out = new Set<string>([name.trim()]);
+  const desc = opts.description ?? "";
+  const stem = opts.domain?.split(".")[0]?.trim();
+  if (stem && stem.length >= 2) out.add(stem);
+  for (const m of desc.matchAll(/\(([^)]+)\)/g)) {
+    for (const part of m[1].split(/[,;]/)) {
+      const p = part.trim();
+      if (p.length >= 2 && p.length < 80) out.add(p);
+    }
+  }
+  return [...out];
+}
+
+export function mentionsAnyCompany(pageText: string, aliases: string[]): boolean {
+  return aliases.some((a) => mentionsCompany(pageText, a));
+}
+
+export function companyNamesMatch(label: string, aliases: string[]): boolean {
+  return aliases.some((a) => namesMatch(label, a));
 }
 
 /** A personal profile page (`/in/<slug>`), never a company page, post or search result. */
@@ -84,7 +109,7 @@ export type ProfileVerdict = { ok: true } | { ok: false; reason: string };
  * Every check is deterministic; the LLM only extracts text, it never makes the decision.
  */
 export function verifyProfile(args: {
-  expected: { fullName: string; companyName: string };
+  expected: { fullName: string; companyAliases: string[] };
   role: ProfileRoleLike;
   pageText: string;
   pageTitle?: string | null;
@@ -94,9 +119,8 @@ export function verifyProfile(args: {
   if (!role.quote || !findSnippet(pageText, role.quote.slice(0, 120), 10)) return { ok: false, reason: "role quote not found on the page" };
   const profileName = role.fullName ?? (pageTitle ?? "").replace(/\s*[|–-]\s*LinkedIn.*$/i, "");
   if (!personNamesMatch(expected.fullName, profileName)) return { ok: false, reason: "name does not match" };
-  if (!namesMatch(role.currentCompany, expected.companyName)) return { ok: false, reason: "current company does not match" };
-  // A verbatim sentence that never mentions the employer proves nothing about the role.
-  if (!mentionsCompany(role.quote, expected.companyName)) return { ok: false, reason: "quoted text does not name the employer" };
+  if (!companyNamesMatch(role.currentCompany, expected.companyAliases)) return { ok: false, reason: "current company does not match" };
+  if (!mentionsAnyCompany(role.quote, expected.companyAliases)) return { ok: false, reason: "quoted text does not name the employer" };
   return { ok: true };
 }
 
@@ -117,8 +141,16 @@ export function nameFromProfileTitle(title: string | null | undefined): string {
 }
 
 /** Deterministic gate that decides whether a search hit is even worth an LLM read. */
-export function worthReading(args: { expected: { fullName: string; companyName: string }; title?: string | null; pageText: string }): boolean {
-  return personNamesMatch(args.expected.fullName, nameFromProfileTitle(args.title)) && mentionsCompany(args.pageText, args.expected.companyName);
+export function worthReading(args: {
+  expected: { fullName: string; companyAliases: string[] };
+  title?: string | null;
+  pageText: string;
+}): boolean {
+  const header = profileHeader(args.pageText).name;
+  const nameOk =
+    personNamesMatch(args.expected.fullName, nameFromProfileTitle(args.title)) ||
+    (header ? personNamesMatch(args.expected.fullName, header) : false);
+  return nameOk && mentionsAnyCompany(args.pageText, args.expected.companyAliases);
 }
 
 /** Every name the page gives for the person (search-result title and on-page header) must match. */
@@ -146,14 +178,14 @@ export function profileHeader(pageText: string): { name: string | null; headline
  * Returns the headline text taken from the page so the evidence quotes the source, not a model.
  */
 export function verifyByHeadline(args: {
-  expected: { fullName: string; companyName: string };
+  expected: { fullName: string; companyAliases: string[] };
   pageText: string;
   pageTitle?: string | null;
 }): { ok: true; headline: string } | { ok: false; reason: string } {
   const header = profileHeader(args.pageText);
   if (!profileNameOk(args.expected.fullName, args.pageTitle, header.name)) return { ok: false, reason: "name does not match" };
   if (!header.headline) return { ok: false, reason: "no headline on the page" };
-  if (!mentionsCompany(header.headline, args.expected.companyName)) return { ok: false, reason: "headline does not name the employer" };
+  if (!mentionsAnyCompany(header.headline, args.expected.companyAliases)) return { ok: false, reason: "headline does not name the employer" };
   if (FORMER.test(header.headline)) return { ok: false, reason: "headline describes a former role" };
   return { ok: true, headline: header.headline };
 }
@@ -163,7 +195,7 @@ export function verifyByHeadline(args: {
  * employer, followed by a role marked "(Current)" or ending in "Present" before the next company.
  */
 export function verifyByExperience(args: {
-  expected: { fullName: string; companyName: string };
+  expected: { fullName: string; companyAliases: string[] };
   pageText: string;
   pageTitle?: string | null;
 }): { ok: true; statement: string } | { ok: false; reason: string } {
@@ -175,7 +207,7 @@ export function verifyByExperience(args: {
   for (let i = 0; i < headings.length; i++) {
     const h = headings[i];
     const company = (h[1] ?? h[2] ?? "").trim();
-    if (!company || !namesMatch(company, args.expected.companyName)) continue;
+    if (!company || !companyNamesMatch(company, args.expected.companyAliases)) continue;
     const end = headings[i + 1]?.index ?? text.length;
     const segment = text.slice((h.index ?? 0) + h[0].length, end).slice(0, 1_200);
     const roles = segment.split("\n").map((l) => l.trim()).filter(Boolean);

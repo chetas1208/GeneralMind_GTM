@@ -4,11 +4,12 @@ import {
   mentionsCompany,
   nameFromProfileTitle,
   personNamesMatch,
+  companySearchAliases,
+  worthReading,
   profileHeader,
   verifyByExperience,
   verifyByHeadline,
   verifyProfile,
-  worthReading,
 } from "@/lib/contact/profile-match";
 
 describe("personNamesMatch", () => {
@@ -39,7 +40,7 @@ describe("isLinkedinProfileUrl", () => {
 describe("verifyProfile", () => {
   const text = "Jane Smith\nVice President, Supply Chain at Acme Industries\nGreater Chicago Area. Experience: Acme Industries 2019 – Present.";
   const role = { fullName: "Jane Smith", isCurrent: true, currentTitle: "Vice President, Supply Chain", currentCompany: "Acme Industries", quote: "Vice President, Supply Chain at Acme Industries" };
-  const expected = { fullName: "Jane Smith", companyName: "Acme Industries, Inc." };
+  const expected = { fullName: "Jane Smith", companyAliases: ["Acme Industries, Inc."] };
 
   it("accepts a profile whose quote, name and employer all check out", () => {
     expect(verifyProfile({ expected, role, pageText: text })).toEqual({ ok: true });
@@ -49,7 +50,7 @@ describe("verifyProfile", () => {
     expect(v).toMatchObject({ ok: false });
   });
   it("rejects a namesake at a different company", () => {
-    const v = verifyProfile({ expected: { ...expected, companyName: "Globex" }, role, pageText: text });
+    const v = verifyProfile({ expected: { ...expected, companyAliases: ["Globex"] }, role, pageText: text });
     expect(v).toMatchObject({ ok: false, reason: "current company does not match" });
   });
   it("rejects a different person with the same employer", () => {
@@ -81,7 +82,7 @@ describe("German name forms", () => {
 });
 
 describe("worthReading pre-filter", () => {
-  const expected = { fullName: "Jörg Weidenfeld", companyName: "Savify AG" };
+  const expected = { fullName: "Jörg Weidenfeld", companyAliases: ["Savify AG"] };
   it("extracts the person name from a result title", () => {
     expect(nameFromProfileTitle("Joerg Weidenfeld - CEO - Savify | LinkedIn")).toBe("Joerg Weidenfeld");
     expect(nameFromProfileTitle("Joerg Weidenfeld")).toBe("Joerg Weidenfeld");
@@ -100,7 +101,7 @@ describe("worthReading pre-filter", () => {
 });
 
 describe("verifyByHeadline (no LLM)", () => {
-  const expected = { fullName: "Jörg Weidenfeld", companyName: "Savify AG" };
+  const expected = { fullName: "Jörg Weidenfeld", companyAliases: ["Savify AG"] };
   const page = "# Joerg Weidenfeld\nCEO Savify AG | Serial Entrepreneur | Procurement Innovator\nSankt Gallen, Switzerland\n500 connections\n## About\nI have led 20 organizations.";
   it("reads name and headline from the header block only", () => {
     expect(profileHeader(page).name).toBe("Joerg Weidenfeld");
@@ -129,12 +130,12 @@ describe("verifyProfile — quote must support the claim", () => {
   it("rejects a verbatim quote that does not name the employer", () => {
     const text = "Jane Smith\nProcurement alliance with high volume spend. Effortless Savings!";
     const role = { fullName: "Jane Smith", isCurrent: true, currentTitle: "CEO", currentCompany: "Acme Industries", quote: "Procurement alliance with high volume spend. Effortless Savings!" };
-    expect(verifyProfile({ expected: { fullName: "Jane Smith", companyName: "Acme Industries" }, role, pageText: text })).toMatchObject({ ok: false, reason: "quoted text does not name the employer" });
+    expect(verifyProfile({ expected: { fullName: "Jane Smith", companyAliases: ["Acme Industries"] }, role, pageText: text })).toMatchObject({ ok: false, reason: "quoted text does not name the employer" });
   });
 });
 
 describe("verifyByExperience (no LLM)", () => {
-  const expected = { fullName: "Antione Bennett", companyName: "Gap, Inc" };
+  const expected = { fullName: "Antione Bennett", companyAliases: ["Gap, Inc"] };
   const page = `# Antione Bennett, MBA
 Head of Supply Chain/Transportation Procurement
 Columbus, Ohio
@@ -168,7 +169,23 @@ Feb 2022 - Present (4 years and 7 months) in United States
 describe("evidence text is plain", () => {
   it("strips markdown links from experience statements", () => {
     const page = "# Jane Smith\nhead\n## Experience\n### [Sanofi](https://www.linkedin.com/company/sanofi)\n#### Head of Logistics - [Sanofi](https://www.linkedin.com/company/sanofi) (Current)\nJan 2026 - Present";
-    const v = verifyByExperience({ expected: { fullName: "Jane Smith", companyName: "Sanofi" }, pageText: page, pageTitle: "Jane Smith" });
+    const v = verifyByExperience({ expected: { fullName: "Jane Smith", companyAliases: ["Sanofi"] }, pageText: page, pageTitle: "Jane Smith" });
     expect(v.ok && v.statement).not.toMatch(/\]\(|https?:/);
+  });
+});
+
+describe("companySearchAliases and abbreviated names", () => {
+  it("matches Caitlin V. to Caitlin Vorlicek", () => {
+    expect(personNamesMatch("Caitlin Vorlicek", "Caitlin V.")).toBe(true);
+    expect(personNamesMatch("Caitlin Vorlicek", "Caitlin Bolnick Rellas")).toBe(false);
+  });
+  it("finds TVH Parts from the company description", () => {
+    const aliases = companySearchAliases("TVH", { domain: "tvh.com", description: "TVH (TVH Parts NV) is a leading manufacturer" });
+    expect(aliases.some((a) => /tvh parts/i.test(a))).toBe(true);
+    expect(worthReading({
+      expected: { fullName: "Tanja Dysli", companyAliases: aliases },
+      title: "Tanja Dysli",
+      pageText: "# Tanja Dysli\nCOO at TVH Parts\nBelgium",
+    })).toBe(true);
   });
 });
