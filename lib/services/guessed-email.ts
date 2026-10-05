@@ -1,6 +1,6 @@
 import "server-only";
 import { eq } from "drizzle-orm";
-import { GUESSED_EMAIL_STATUS, isVerifiedEmailStatus, pickPrimaryEmailGuess } from "@/lib/contact/email-guess";
+import { isVerifiedEmailStatus, pickPrimaryEmailGuess, UNVERIFIED_EMAIL_STATUS } from "@/lib/contact/email-guess";
 import { getDb } from "@/lib/db";
 import { getCompany } from "@/lib/db/queries/companies";
 import { addEvidence, getLeadRow } from "@/lib/db/queries/leads";
@@ -19,7 +19,9 @@ export async function applyGuessedEmailForLead(leadId: string): Promise<{ applie
   const person = await getPerson(lead.personId);
   if (!person) return { applied: false };
   if (person.email && isVerifiedEmailStatus(person.emailStatus)) return { applied: false };
-  if (person.email && person.emailStatus === GUESSED_EMAIL_STATUS) return { applied: false, email: person.email };
+  if (person.email && (person.emailStatus === UNVERIFIED_EMAIL_STATUS || person.emailStatus === "guessed_unverified")) {
+    return { applied: false, email: person.email };
+  }
 
   const company = await getCompany(lead.companyId);
   if (!company?.domain) return { applied: false };
@@ -43,7 +45,7 @@ export async function applyGuessedEmailForLead(leadId: string): Promise<{ applie
     fullName: person.fullName,
     companyId: company.id,
     email: guess,
-    emailStatus: GUESSED_EMAIL_STATUS,
+    emailStatus: UNVERIFIED_EMAIL_STATUS,
   });
 
   const leadRows = await db.select({ id: eventLeads.id }).from(eventLeads).where(eq(eventLeads.personId, person.id));
@@ -51,11 +53,11 @@ export async function applyGuessedEmailForLead(leadId: string): Promise<{ applie
     await addEvidence({
       eventLeadId: l.id,
       sourceType: "inference",
-      evidenceText: `Pattern guess ${guess} from company domain ${company.domain}. Unverified — confirm before outreach.`,
+      evidenceText: `Inferred work email ${guess} from company domain ${company.domain} (unverified — confirm before outreach).`,
       confidence: EVIDENCE_CONFIDENCE.inference,
     });
   }
   await updateAccountIntelligence(company.id);
-  log.info("guessed email applied", { leadId, guess });
+  log.info("unverified email applied", { leadId, email: guess });
   return { applied: true, email: guess };
 }

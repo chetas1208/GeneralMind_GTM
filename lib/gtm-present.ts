@@ -1,4 +1,4 @@
-import { GUESSED_EMAIL_STATUS, isVerifiedEmailStatus } from "@/lib/contact/email-guess";
+import { isVerifiedEmailStatus, UNVERIFIED_EMAIL_STATUS } from "@/lib/contact/email-guess";
 import { CONFIRMED_ATTENDANCE } from "@/lib/scoring/config";
 import { humanize } from "@/lib/format";
 
@@ -18,7 +18,11 @@ export function emailPresentation(
 ): { text: string; clarity: FieldClarity } {
   if (!email) return { text: "Not available", clarity: "unknown" };
   if (emailStatus === "manual") return { text: fieldWithClarity(email, "manual"), clarity: "manual" };
-  if (emailStatus === GUESSED_EMAIL_STATUS || emailStatus === "guessed" || emailStatus === "unverified") {
+  if (
+    emailStatus === UNVERIFIED_EMAIL_STATUS ||
+    emailStatus === "guessed_unverified" ||
+    emailStatus === "guessed"
+  ) {
     return { text: fieldWithClarity(email, "unverified"), clarity: "unverified" };
   }
   if (isVerifiedEmailStatus(emailStatus)) return { text: email, clarity: "verified" };

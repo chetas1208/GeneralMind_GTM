@@ -407,7 +407,7 @@ Verified profiles flow to HubSpot as `hs_linkedin_url` (https LinkedIn `/in/` UR
 ## Known limitations
 
 - **Public attendee data is incomplete.** Company participation does not imply individual attendance; the UI says so.
-- **Work emails:** Apollo verified emails when the plan allows; otherwise the pipeline applies **pattern guesses** from the company domain (`first.last@domain`, etc.) stored as **`guessed_unverified`** and shown in the UI as `name@company.com (unverified)`. Verified public LinkedIn profiles remain the stronger route when found. Reviewers can override email manually (marked **manual**).
+- **Work emails:** Apollo verified emails when the plan allows; otherwise the pipeline infers `first.last@domain` from the company domain, stores **`unverified`**, and shows `name@company.com (unverified)` in the UI. Verified public LinkedIn profiles remain the stronger route when found. Reviewers can override email manually (marked **manual**).
 - **Some pages block automated extraction**; those sources are skipped, not guessed.
 - **Signal quality depends on public evidence.** Heuristic verification is deliberately conservative and will miss weak signals. Two articles about one development can still survive as two signals if their wording differs.
 - **Opportunity** is modelled as event leads plus account intelligence; there is no separate `opportunities` table yet.

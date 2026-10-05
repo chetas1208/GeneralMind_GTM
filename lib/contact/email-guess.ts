@@ -1,10 +1,12 @@
-/** Pattern-based work email guesses — always stored with `guessed_unverified` status. */
+/** Pattern-based work emails — always stored with `unverified` status (legacy: `guessed_unverified`). */
 
-export const GUESSED_EMAIL_STATUS = "guessed_unverified";
+export const UNVERIFIED_EMAIL_STATUS = "unverified";
+/** @deprecated use UNVERIFIED_EMAIL_STATUS */
+export const GUESSED_EMAIL_STATUS = UNVERIFIED_EMAIL_STATUS;
 
 export function isVerifiedEmailStatus(status: string | null | undefined): boolean {
   if (!status) return false;
-  if (status === GUESSED_EMAIL_STATUS || status === "unverified" || status === "guessed") return false;
+  if (status === UNVERIFIED_EMAIL_STATUS || status === "guessed_unverified" || status === "guessed") return false;
   if (status === "manual") return true;
   return /verified|likely|catch.?all|valid/i.test(status);
 }

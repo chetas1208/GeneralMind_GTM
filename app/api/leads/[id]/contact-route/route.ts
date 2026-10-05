@@ -16,6 +16,6 @@ export async function POST(request: Request, ctx: RouteContext<"/api/leads/[id]/
     if (!result) throw new HttpError(404, "Lead not found");
     const guess = await applyGuessedEmailForLead(id);
     if (result.status === "found" || guess.applied) revalidatePath(`/leads/${id}`);
-    return json({ ...result, guessedEmail: guess.applied ? guess.email : null });
+    return json({ ...result, unverifiedEmail: guess.applied ? guess.email : null });
   });
 }

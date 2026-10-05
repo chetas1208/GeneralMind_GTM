@@ -36,7 +36,7 @@ export function FindContactRoute({ leadId }: { leadId: string }) {
       {state.kind === "found" && <p className="text-[11px] text-emerald-400">Verified profile attached.</p>}
       {state.kind === "none" && (
         <p className="text-[11px] text-muted-foreground">
-          No profile passed verification{state.reasons.length ? ` (${state.reasons.join("; ")})` : ""}. Nothing was guessed.
+          No profile passed verification{state.reasons.length ? ` (${state.reasons.join("; ")})` : ""}. No contact route was invented.
         </p>
       )}
       {state.kind === "error" && <p className="text-[11px] text-destructive">{state.message}</p>}

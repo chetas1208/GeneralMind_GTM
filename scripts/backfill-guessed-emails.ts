@@ -6,7 +6,7 @@ import "dotenv/config";
 import { and, eq, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { GUESSED_EMAIL_STATUS, pickPrimaryEmailGuess } from "../lib/contact/email-guess";
+import { pickPrimaryEmailGuess, UNVERIFIED_EMAIL_STATUS } from "../lib/contact/email-guess";
 import * as schema from "../lib/db/schema";
 
 const { companies, eventLeads, people } = schema;
@@ -36,11 +36,11 @@ async function main() {
     if (!guess) continue;
     const [clash] = await db.select({ id: people.id }).from(people).where(eq(people.email, guess)).limit(1);
     if (clash && clash.id !== r.personId) continue;
-    await db.update(people).set({ email: guess, emailStatus: GUESSED_EMAIL_STATUS, updatedAt: new Date() }).where(eq(people.id, r.personId));
+    await db.update(people).set({ email: guess, emailStatus: UNVERIFIED_EMAIL_STATUS, updatedAt: new Date() }).where(eq(people.id, r.personId));
     applied++;
     console.log(`${r.fullName} @ ${r.companyName}: ${guess} (unverified)`);
   }
-  console.log(`Done. Applied ${applied} guessed email(s).`);
+  console.log(`Done. Applied ${applied} unverified email(s).`);
 }
 
 main().catch((e) => {

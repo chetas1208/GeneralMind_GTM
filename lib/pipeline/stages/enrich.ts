@@ -102,7 +102,7 @@ export async function runEnrichStage(ctx: RunContext, event: EventRow): Promise<
     ctx.counts.peopleEnriched += 1;
     if (!verifiedEmail && row.company.domain) {
       const g = await applyGuessedEmailForLead(leadId);
-      if (g.applied) return `${row.person.fullName}: enriched (guessed email ${g.email}, unverified)`;
+      if (g.applied) return `${row.person.fullName}: enriched (${g.email}, unverified)`;
     }
     return `${row.person.fullName}: enriched${verifiedEmail ? " (verified email)" : " (no email)"}`;
   });
@@ -149,7 +149,7 @@ async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<bo
     c.enrichQueue = ranked.map((r) => r.id);
     c.enrichDone = 0;
     ctx.counters.enrichTarget = ranked.length;
-    ctx.note(`Contact routes: verified public profiles + unverified email guesses where domain is known (${ranked.length} leads).`);
+    ctx.note(`Contact routes: verified public profiles + unverified inferred emails where domain is known (${ranked.length} leads).`);
   }
 
   const queue = c.enrichQueue ?? [];
@@ -162,7 +162,7 @@ async function runWebContactRoutes(ctx: RunContext, event: EventRow): Promise<bo
     if (guess.applied) ctx.counts.peopleEnriched += 1;
     const parts = [
       res?.status === "found" ? "verified public profile" : null,
-      guess.applied ? `guessed email ${guess.email} (unverified)` : null,
+      guess.applied ? `${guess.email} (unverified)` : null,
     ].filter(Boolean);
     return parts.length
       ? `${leadId.slice(0, 8)}: ${parts.join("; ")}`
