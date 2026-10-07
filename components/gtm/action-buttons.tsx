@@ -30,7 +30,7 @@ export function SourceLeadsButton({ eventId, disabled, label = "Source Leads", v
       size="sm"
       variant={variant}
       disabled={disabled || pending}
-      className="min-w-[9.5rem]"
+      className="min-w-0 sm:min-w-[9.5rem]"
       onClick={() =>
         start(async () => {
           const r = await post(`/api/events/${eventId}/source`);
@@ -88,7 +88,7 @@ export function DiscoverEventsButton({
       <Button
         size="sm"
         variant="outline"
-        className="min-w-[11rem]"
+        className="min-w-0 sm:min-w-[11rem]"
         disabled={pending}
         aria-expanded={open}
         title={running ? "Market discovery is currently searching, verifying and ranking relevant events." : undefined}
@@ -142,7 +142,7 @@ export function RefreshIntelligenceButton() {
     <Button
       size="sm"
       variant="outline"
-      className="min-w-[10.5rem]"
+      className="min-w-0 sm:min-w-[10.5rem]"
       disabled={pending}
       onClick={() =>
         start(async () => {

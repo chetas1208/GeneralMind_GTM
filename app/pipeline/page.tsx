@@ -51,8 +51,8 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
       {mode === "board" ? (
         <PipelineBoard columns={JSON.parse(JSON.stringify(columnData))} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/60 bg-card/30">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto rounded-xl border border-border/60 bg-card/30">
+          <table className="w-full min-w-[560px] text-left">
             <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
               <tr>
                 <th className="px-4 py-2 font-medium">Person</th>

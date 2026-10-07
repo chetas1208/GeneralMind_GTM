@@ -13,7 +13,7 @@ export type EventTabKey = (typeof TABS)[number]["key"];
 
 export function EventTabBar({ eventId, active }: { eventId: string; active: EventTabKey }) {
   return (
-    <nav className="flex gap-1 border-b border-border/60" aria-label="Event sections">
+    <nav className="flex gap-1 overflow-x-auto border-b border-border/60" aria-label="Event sections">
       {TABS.map((t) => (
         <Link
           key={t.key}

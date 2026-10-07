@@ -88,7 +88,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <EventStatusButtons eventId={event.id} status={event.status} />
           <EditEventSheet event={event} />
           <SourceLeadsButton eventId={event.id} disabled={Boolean(activeRun)} label={leads.total > 0 ? "Re-run sourcing" : "Source Leads"} />
@@ -99,7 +99,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
         <RunProgress initial={toRunDto(activeRun)} />
       ) : lastRun ? (
         <details className="rounded-lg border bg-card">
-          <summary className="flex cursor-pointer items-center justify-between px-4 py-2.5">
+          <summary className="flex flex-wrap cursor-pointer items-center justify-between gap-2 px-4 py-2.5">
             <span className="font-medium">
               Last sourcing run · <span className="font-normal text-muted-foreground">{lastRun.status} {formatRelative(lastRun.completedAt ?? lastRun.createdAt)}</span>
             </span>
