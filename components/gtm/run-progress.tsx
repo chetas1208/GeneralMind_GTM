@@ -144,7 +144,7 @@ export function RunProgress({ initial, compact = false, onFinished }: { initial:
         <div className="flex items-center gap-2 font-medium">
           {active ? <Loader2 className="size-4 animate-spin text-sky-600" /> : run.status === "complete" ? <CheckCircle2 className="size-4 text-emerald-600" /> : run.status === "cancelled" ? <XCircle className="size-4 text-muted-foreground" /> : <XCircle className="size-4 text-destructive" />}
           {run.kind === "event_discovery" ? "Event discovery" : "Lead sourcing"}
-          <span className="font-normal text-muted-foreground">· {run.status === "cancel_requested" ? "stopping after the current stage" : run.status.replace("_", " ")}</span>
+          <span className="font-normal text-muted-foreground">· {run.status === "cancel_requested" ? "stopping after the current batch" : run.status.replace("_", " ")}</span>
         </div>
         <div className="flex items-center gap-2">
           {(run.status === "queued" || run.status === "running") && (
@@ -157,7 +157,7 @@ export function RunProgress({ initial, compact = false, onFinished }: { initial:
               {busy ? <Loader2 className="animate-spin" /> : null}Retry
             </Button>
           )}
-          <span className="text-[11px] text-muted-foreground">{run.status === "complete" ? "Complete" : "In progress"}</span>
+          <span className="text-[11px] text-muted-foreground">{run.status === "complete" ? "Complete" : active ? "In progress" : run.status === "cancelled" ? "Cancelled" : "Stopped"}</span>
         </div>
       </div>
       <ol className="space-y-1.5 px-4 py-3">

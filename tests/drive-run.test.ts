@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NonRetriableError } from "inngest";
 
 const getRun = vi.fn();
-const markRunCancelled = vi.fn();
+const finalizeRunCancelled = vi.fn();
 const tickRun = vi.fn();
 
 vi.mock("@/lib/db/queries/runs", () => ({
   getRun: (...a: unknown[]) => getRun(...a),
-  markRunCancelled: (...a: unknown[]) => markRunCancelled(...a),
+  finalizeRunCancelled: (...a: unknown[]) => finalizeRunCancelled(...a),
   isTerminal: (s: string) => ["complete", "failed", "cancelled"].includes(s),
 }));
 vi.mock("@/lib/pipeline/runner", () => ({ tickRun: (...a: unknown[]) => tickRun(...a) }));
@@ -55,7 +55,7 @@ describe("driveRun (durable step loop)", () => {
     getRun.mockResolvedValue(row("cancel_requested", "extracting"));
     const { step } = fakeStep();
     const final = await driveRun(step, "r1");
-    expect(markRunCancelled).toHaveBeenCalledWith("r1");
+    expect(finalizeRunCancelled).toHaveBeenCalledWith("r1");
     expect(tickRun).not.toHaveBeenCalled();
     expect(final.status).toBe("cancelled");
   });

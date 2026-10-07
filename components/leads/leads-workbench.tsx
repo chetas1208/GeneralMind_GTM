@@ -152,6 +152,9 @@ export function LeadsWorkbench({
   }
 
   const approved = detailReady ? peekApproved : false;
+  const defaultSort = viewKey === "review" ? "priority" : "score";
+  const hasFilters = Boolean(filters.q || filters.eventId || filters.minScore || sp.get("sort"));
+  const filterKey = [viewKey, filters.q ?? "", filters.eventId ?? "", filters.minScore ?? "", filters.sort].join("|");
 
   return (
     <div className="flex min-h-[calc(100vh-6rem)] flex-col gap-4 lg:flex-row lg:gap-0">
@@ -176,8 +179,30 @@ export function LeadsWorkbench({
           ))}
         </div>
 
-        <form method="get" className="flex flex-wrap items-center gap-2">
-          <input type="hidden" name="view" value={viewKey} />
+        <form
+          // Keyed by the URL-derived filters so the uncontrolled inputs reset whenever the URL changes
+          // (back/forward, clean /leads, clear) and can never drift from the query string.
+          key={filterKey}
+          method="get"
+          action="/leads"
+          className="flex flex-wrap items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            const p = new URLSearchParams();
+            const q = String(fd.get("q") ?? "").trim();
+            const event = String(fd.get("event") ?? "");
+            const minScore = String(fd.get("minScore") ?? "");
+            const sort = String(fd.get("sort") ?? "");
+            if (viewKey !== "review") p.set("view", viewKey);
+            if (q) p.set("q", q);
+            if (event) p.set("event", event);
+            if (minScore) p.set("minScore", minScore);
+            if (sort && sort !== defaultSort) p.set("sort", sort);
+            const qs = p.toString();
+            startNav(() => router.push(qs ? `/leads?${qs}` : "/leads", { scroll: false }));
+          }}
+        >
           <input name="q" defaultValue={filters.q} placeholder="Search" className="h-8 w-44 rounded-lg border bg-card/80 px-2.5 text-[13px]" />
           <select name="event" defaultValue={filters.eventId ?? ""} className="h-8 rounded-lg border bg-card/80 px-2 text-[13px]" aria-label="Event">
             <option value="">All events</option>
@@ -205,6 +230,11 @@ export function LeadsWorkbench({
           <button type="submit" className="h-8 rounded-lg bg-primary px-3 text-[13px] font-medium text-primary-foreground">
             Apply
           </button>
+          {hasFilters && (
+            <Link href={viewKey === "review" ? "/leads" : `/leads?view=${viewKey}`} className="h-8 rounded-lg border px-3 text-[13px] leading-8 text-muted-foreground hover:text-foreground">
+              Clear
+            </Link>
+          )}
           <button type="button" onClick={() => setDisplayOpen((o) => !o)} className="ml-auto flex h-8 items-center gap-1 rounded-lg border px-2.5 text-[13px] text-muted-foreground hover:text-foreground">
             <SlidersHorizontal className="size-3.5" /> Display
           </button>

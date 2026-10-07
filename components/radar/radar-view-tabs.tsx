@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { GraphView } from "@/components/graph/graph-view";
+import { GraphView } from "@/components/graph/graph-view-lazy";
 import { cn } from "@/lib/utils";
 
 export function RadarViewTabs({ table, activeRunId }: { table: React.ReactNode; activeRunId?: string }) {

@@ -6,7 +6,7 @@ import type { MomentumDriver } from "./types";
 
 const cache = new Map<string, { text: string; at: number }>();
 
-function fallback(drivers: MomentumDriver[], deltaPct: number | null): string {
+export function plainNarrative(drivers: MomentumDriver[], deltaPct: number | null): string {
   const top = drivers[0];
   if (!top) return "No new review-ready opportunities moved momentum in this window.";
   const change = deltaPct == null ? "Momentum reflects" : `Momentum ${deltaPct >= 0 ? "rose" : "fell"} ${Math.abs(deltaPct)}% primarily because`;
@@ -15,7 +15,7 @@ function fallback(drivers: MomentumDriver[], deltaPct: number | null): string {
 
 /** Summarize only the computed drivers. Falls back to that arithmetic if the model is unavailable. */
 export async function explainDrivers(drivers: MomentumDriver[], deltaPct: number | null): Promise<string> {
-  const plain = fallback(drivers, deltaPct);
+  const plain = plainNarrative(drivers, deltaPct);
   if (!drivers.length || !isConfigured("NVIDIA_API_KEY")) return plain;
   const key = `${deltaPct}|${drivers.map((d) => `${d.title}:${d.contribution}`).join("|")}`;
   const hit = cache.get(key);

@@ -1,5 +1,5 @@
 import "server-only";
-import { acquireLease, createRun, findActiveRun, getRun, reclaimStaleActiveRun, type RunRow } from "@/lib/db/queries/runs";
+import { acquireLease, createRun, finalizeRunCancelled, findActiveRun, getRun, getRunStatus, reclaimStaleActiveRun, type RunRow } from "@/lib/db/queries/runs";
 import { sanitizeStoredError } from "@/lib/security/errors";
 import { createLogger } from "@/lib/logger";
 import { RunContext, type StepHandler } from "./context";
@@ -38,13 +38,27 @@ export const isActive = (run: Pick<RunRow, "status">) => run.status === "queued"
 export async function tickRun(runId: string, opts: { budgetMs?: number; rethrow?: boolean } = {}): Promise<RunRow | null> {
   const budgetMs = opts.budgetMs ?? 42_000;
   const leased = await acquireLease(runId, budgetMs + 20_000);
-  if (!leased) return getRun(runId);
+  if (!leased) {
+    // A cancel-requested run is never leased again; whoever ticks next finalizes it once no worker holds the lease.
+    const current = await getRun(runId);
+    if (current?.status === "cancel_requested" && !(current.leaseUntil && current.leaseUntil.getTime() > Date.now())) {
+      await finalizeRunCancelled(runId);
+      return getRun(runId);
+    }
+    return current;
+  }
 
   const ctx = new RunContext(leased, Date.now() + budgetMs);
   const handler = handlerFor(leased);
 
   try {
     for (;;) {
+      // Cooperative cancellation: re-read durable state before every batch so a stop request lands within one batch.
+      if ((await getRunStatus(runId)) === "cancel_requested") {
+        await ctx.save();
+        await finalizeRunCancelled(runId);
+        break;
+      }
       const result = await handler(ctx);
       if (result === "done") {
         ctx.setStage("complete");
@@ -53,6 +67,10 @@ export async function tickRun(runId: string, opts: { budgetMs?: number; rethrow?
         break;
       }
       await ctx.save();
+      if ((await getRunStatus(runId)) === "cancel_requested") {
+        await finalizeRunCancelled(runId);
+        break;
+      }
       if (ctx.timeLeft() < MIN_STEP_MS) {
         await ctx.save({ releaseLease: true });
         break;

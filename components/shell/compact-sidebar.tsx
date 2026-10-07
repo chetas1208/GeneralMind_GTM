@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { CircleHelp, Kanban, LogOut, Radar, Search, Users, PanelLeftClose, PanelLeft } from "lucide-react";
-import { restartProductTour } from "@/components/onboarding/product-tour";
+import { restartProductTour } from "@/components/onboarding/tour-events";
 import { cn } from "@/lib/utils";
 
 const NAV = [
@@ -27,7 +27,7 @@ export function CompactSidebar({
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-border/80 bg-sidebar transition-[width] duration-200",
+        "sticky top-0 hidden h-screen shrink-0 flex-col md:flex border-r border-border/80 bg-sidebar transition-[width] duration-200",
         collapsed ? "w-[52px]" : "w-[200px]",
       )}
     >

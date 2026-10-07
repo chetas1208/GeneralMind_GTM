@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { EVENTS, Joyride, STATUS, type EventData, type Step } from "react-joyride";
 
 const VERSION = "v2";
-const KEY = "generalmind-tour-completed";
+import { TOUR_KEY as KEY } from "./tour-events";
 const PENDING = "gm-tour-pending";
 
 const STEPS: Array<Step & { label: string }> = [
@@ -179,9 +179,4 @@ export function ProductTour({ auto = false }: { auto?: boolean }) {
       />
     </>
   );
-}
-
-export function restartProductTour() {
-  localStorage.removeItem(KEY);
-  window.dispatchEvent(new Event("gm-start-tour"));
 }

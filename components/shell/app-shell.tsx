@@ -2,9 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import { ProductTour } from "@/components/onboarding/product-tour";
+import dynamic from "next/dynamic";
 import { CommandMenu } from "./command-menu";
 import { CompactSidebar } from "./compact-sidebar";
+import { MobileNav } from "./mobile-nav";
+
+// Loaded after hydration: onboarding must never delay first paint.
+const ProductTour = dynamic(() => import("@/components/onboarding/product-tour").then((m) => m.ProductTour), { ssr: false });
 
 const STORAGE_KEY = "gm-sidebar-collapsed";
 
@@ -37,7 +41,8 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div className="flex min-h-screen w-full">
+      <MobileNav onSearch={() => setSearchOpen(true)} />
+      <div className="flex min-h-screen w-full md:min-h-screen">
         <CompactSidebar collapsed={collapsed} onToggle={toggleCollapsed} onSearch={() => setSearchOpen(true)} />
         <main className="min-w-0 flex-1 overflow-x-clip">
           <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-8">{children}</div>

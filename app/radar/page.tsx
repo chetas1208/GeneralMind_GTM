@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { DiscoverEventsButton, RefreshIntelligenceButton, SourceLeadsButton } from "@/components/gtm/action-buttons";
 import { RunProgress } from "@/components/gtm/run-progress";
 import { ScoreBadge } from "@/components/gtm/badges";
 import { MetricInfo } from "@/components/ui/metric-info";
 import { relevanceBand } from "@/lib/confidence";
-import { GraphView } from "@/components/graph/graph-view";
+import { GraphView } from "@/components/graph/graph-view-lazy";
 import { MomentumChart } from "@/components/radar/momentum-chart";
 import { loadActivity } from "@/lib/analytics/activity";
 import { loadDrivers } from "@/lib/analytics/drivers";
-import { explainDrivers } from "@/lib/analytics/narrative";
+import { explainDrivers, plainNarrative } from "@/lib/analytics/narrative";
 import { loadFunnel } from "@/lib/analytics/funnel";
 import { loadMomentum } from "@/lib/analytics/momentum";
 import { pickNextAction } from "@/lib/analytics/next-action";
@@ -31,6 +32,11 @@ function daysAway(start: string | null, now: number): string | null {
   if (d < 0) return "Event passed";
   if (d === 0) return "Today";
   return `${d} days away`;
+}
+
+/** Streams in after first paint: the model sentence never blocks Radar (the arithmetic sentence shows meanwhile). */
+async function DriverNarrative({ drivers, deltaPct }: { drivers: Parameters<typeof explainDrivers>[0]; deltaPct: number | null }) {
+  return <>{await explainDrivers(drivers, deltaPct)}</>;
 }
 
 function eventState(leadCount: number, researching: boolean): string {
@@ -64,7 +70,6 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
     loadActivity(8),
   ]);
 
-  const narrative = await explainDrivers(drivers, series.deltaPct);
   const canSource = isConfigured("EXA_API_KEY") && isConfigured("NVIDIA_API_KEY");
   const reviewReady = counts.needs_review ?? 0;
   const high = topOpps.filter((l) => l.priorityScore >= 80).length;
@@ -138,7 +143,10 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
 
           <section>
             <h2 data-tour="drivers" className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Why momentum changed</h2>
-            <p className="mb-2 max-w-2xl text-sm text-muted-foreground">{narrative}</p>
+            <p className="mb-2 max-w-2xl text-sm text-muted-foreground"><Suspense fallback={plainNarrative(drivers, series.deltaPct)}>
+                <DriverNarrative drivers={drivers} deltaPct={series.deltaPct} />
+              </Suspense>
+            </p>
             {drivers.length === 0 ? (
               <p className="text-sm text-muted-foreground">No new review-ready opportunities in this window yet.</p>
             ) : (

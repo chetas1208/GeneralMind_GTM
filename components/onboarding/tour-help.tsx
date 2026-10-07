@@ -1,6 +1,6 @@
 "use client";
 
-import { restartProductTour } from "./product-tour";
+import { restartProductTour } from "./tour-events";
 
 export function TourHelp() {
   return (

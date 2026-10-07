@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { GraphView } from "@/components/graph/graph-view";
+import { GraphView } from "@/components/graph/graph-view-lazy";
 
 export function LeadTraceGraph({ leadId }: { leadId: string }) {
   return (

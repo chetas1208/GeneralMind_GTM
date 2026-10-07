@@ -2,7 +2,7 @@ import "server-only";
 import { NonRetriableError, type step as StepTools } from "inngest";
 import { ConfigError } from "@/lib/env";
 import { IntegrationError } from "@/lib/http";
-import { getRun, isTerminal, markRunCancelled } from "@/lib/db/queries/runs";
+import { getRun, isTerminal, finalizeRunCancelled } from "@/lib/db/queries/runs";
 import { tickRun } from "@/lib/pipeline/runner";
 
 type Step = typeof StepTools;
@@ -26,7 +26,7 @@ async function advance(runId: string): Promise<Snapshot> {
   if (isTerminal(run.status)) return { status: run.status, stage: run.stage };
   // Cancellation is honoured at the boundary between durable steps, never mid-request.
   if (run.status === "cancel_requested") {
-    await markRunCancelled(runId);
+    await finalizeRunCancelled(runId);
     return { status: "cancelled", stage: "cancelled" };
   }
 
