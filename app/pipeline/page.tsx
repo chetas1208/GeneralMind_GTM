@@ -65,7 +65,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
                           <p className="text-xs text-muted-foreground">{l.company?.name ?? "—"}</p>
                         </div>
                         <div className="flex flex-col items-end shrink-0">
-                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                          <ScoreBadge score={l.priorityScore} size="sm" />
                           <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-secondary text-secondary-foreground">
                             {leadStatusLabel(l.status)}
                           </span>
@@ -104,7 +104,7 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
                           <div className="text-xs text-muted-foreground">{l.company?.name}</div>
                         </td>
                         <td className="px-4 py-2.5">
-                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                          <ScoreBadge score={l.priorityScore} size="sm" />
                         </td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">
                           {eventName.get(l.event.id)?.slice(0, 28) ?? l.event.name} · {signalLabel(l.attendanceType)} · {conf.tier}

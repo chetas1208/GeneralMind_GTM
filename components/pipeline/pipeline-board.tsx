@@ -26,7 +26,7 @@ export function PipelineBoard({ columns }: { columns: Col[] }) {
                 <li key={l.id}>
                   <Link href={`/leads?lead=${l.id}`} className="block px-3 py-2.5 hover:bg-accent/40">
                     <div className="flex items-start gap-2">
-                      <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                      <ScoreBadge score={l.priorityScore} size="sm" />
                       <div className="min-w-0">
                         <div className="truncate font-medium">{l.person.fullName}</div>
                         <div className="truncate text-xs text-muted-foreground">{l.company?.name}</div>

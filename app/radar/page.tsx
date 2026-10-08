@@ -178,7 +178,7 @@ export default async function RadarPage({ searchParams }: PageProps<"/radar">) {
                           <p className="font-medium">{l.person.fullName}</p>
                           <p className="truncate text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
                         </div>
-                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                        <ScoreBadge score={l.priorityScore} size="sm" />
                       </Link>
                     </li>
                   ))}

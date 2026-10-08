@@ -310,19 +310,25 @@ export function LeadsWorkbench({
           <ul className="divide-y rounded-xl border border-border/80 bg-card/30 md:hidden">
             {items.map((l) => (
               <li key={l.id}>
-                <button type="button" className="w-full px-3 py-3 text-left" onClick={() => selectLead(l.id)}>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="w-full cursor-pointer px-3 py-3 text-left focus:outline-none"
+                  onClick={() => selectLead(l.id)}
+                  onKeyDown={(e) => e.key === "Enter" && selectLead(l.id)}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-medium">{l.person.fullName}</p>
                       <p className="text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
                     </div>
                     <div className="flex flex-col items-end shrink-0">
-                      <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                      <ScoreBadge score={l.priorityScore} size="sm" />
                       <span className="mt-0.5 font-mono text-[11px] text-muted-foreground" title="Qualification score">Score {l.totalScore}</span>
                     </div>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{l.event.name} · {leadStatusLabel(l.status)}</p>
-                </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -364,10 +370,10 @@ export function LeadsWorkbench({
                       className={cn("cursor-pointer align-middle outline-none hover:bg-accent/40 focus-visible:bg-accent/50", active && "bg-accent/60")}
                     >
                       <td className="px-3 py-2">
-                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                        <ScoreBadge score={l.priorityScore} size="sm" />
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">
-                        <ScoreBadge score={l.totalScore} size="sm" metric="qualificationScore" />
+                        <ScoreBadge score={l.totalScore} size="sm" />
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{l.person.fullName}</div>

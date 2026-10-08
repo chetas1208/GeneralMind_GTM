@@ -6,6 +6,7 @@ import { EventStatusButtons, SourceLeadsButton } from "@/components/gtm/action-b
 import { EventGraphPanel } from "@/components/events/event-graph-panel";
 import { EventTabBar, parseEventTab } from "@/components/events/event-tab-bar";
 import { ScoreBadge, StatusPill, Tag } from "@/components/gtm/badges";
+import { MetricInfo } from "@/components/ui/metric-info";
 import { assessAttendance, fitBand, relevanceBand } from "@/lib/confidence";
 import { signalLabel } from "@/lib/gtm-present";
 import { EditEventSheet } from "@/components/gtm/edit-event";
@@ -173,7 +174,9 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                 <table className="w-full min-w-[640px] text-left">
                   <thead className="border-b bg-muted/50 text-[11px] uppercase tracking-wide text-muted-foreground">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Priority</th>
+                      <th className="px-3 py-2 font-medium">
+                        <span className="inline-flex items-center gap-1">Priority <MetricInfo metric="priority" /></span>
+                      </th>
                       <th className="px-3 py-2 font-medium">Person</th>
                       <th className="px-3 py-2 font-medium">Signal</th>
                       <th className="px-3 py-2 font-medium">Status</th>
@@ -183,7 +186,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                     {leads.items.slice(0, 12).map((l) => (
                       <tr key={l.id} className="hover:bg-muted/30">
                         <td className="px-3 py-2">
-                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                          <ScoreBadge score={l.priorityScore} size="sm" />
                         </td>
                         <td className="px-3 py-2">
                           <Link href={`/leads?event=${event.id}&lead=${l.id}`} className="font-medium hover:underline">
