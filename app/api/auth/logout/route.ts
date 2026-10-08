@@ -24,3 +24,15 @@ export async function POST(request: Request) {
   log.info("logout");
   return res;
 }
+
+export async function GET(request: Request) {
+  const auth = readAuthConfig();
+  if (auth.configured) {
+    await revokeSessionToken(readCookie(request.headers.get("cookie"), ACCESS_COOKIE), auth.secret);
+  }
+  const res = NextResponse.redirect(new URL("/login", request.url));
+  res.cookies.set(ACCESS_COOKIE, "", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 0 });
+  log.info("logout get");
+  return res;
+}
+

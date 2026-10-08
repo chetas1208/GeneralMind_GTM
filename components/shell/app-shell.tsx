@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { CommandMenu } from "./command-menu";
@@ -12,28 +12,38 @@ const ProductTour = dynamic(() => import("@/components/onboarding/product-tour")
 
 const STORAGE_KEY = "gm-sidebar-collapsed";
 
+function subscribeStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getCollapsedSnapshot(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function getCollapsedServerSnapshot(): boolean {
+  return false;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem(STORAGE_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const isCollapsedStored = useSyncExternalStore(subscribeStorage, getCollapsedSnapshot, getCollapsedServerSnapshot);
+  const [collapsedOverride, setCollapsedOverride] = useState<boolean | null>(null);
+  const collapsed = collapsedOverride ?? isCollapsedStored;
   const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
 
   function toggleCollapsed() {
-    setCollapsed((c) => {
-      const next = !c;
-      try {
-        localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-      } catch {
-        /* ignore */
-      }
-      return next;
-    });
+    const next = !collapsed;
+    setCollapsedOverride(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
   }
 
   // The sign-in screen is public: no navigation, search or data hooks until a session exists.

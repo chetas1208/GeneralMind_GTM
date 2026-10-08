@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, SlidersHorizontal, X } from "lucide-react";
@@ -19,14 +19,29 @@ type ColKey = "industry" | "event" | "persona" | "email" | "fit";
 
 const DEFAULT_COLS: Record<ColKey, boolean> = { event: false, industry: false, persona: false, email: false, fit: false };
 
-function readStoredCols(): Record<ColKey, boolean> {
+let cachedColsString: string | null = null;
+let cachedColsObj: Record<ColKey, boolean> = DEFAULT_COLS;
+
+function subscribeCols(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+function getColsSnapshot(): Record<ColKey, boolean> {
   if (typeof window === "undefined") return DEFAULT_COLS;
   try {
     const raw = localStorage.getItem(COLS_KEY);
-    if (raw) return { ...DEFAULT_COLS, ...JSON.parse(raw) };
+    if (raw !== cachedColsString) {
+      cachedColsString = raw;
+      cachedColsObj = raw ? { ...DEFAULT_COLS, ...JSON.parse(raw) } : DEFAULT_COLS;
+    }
+    return cachedColsObj;
   } catch {
-    /* ignore */
+    return DEFAULT_COLS;
   }
+}
+
+function getColsServerSnapshot(): Record<ColKey, boolean> {
   return DEFAULT_COLS;
 }
 
@@ -74,7 +89,9 @@ export function LeadsWorkbench({
   const router = useRouter();
   const sp = useSearchParams();
   const selectedId = sp.get("lead");
-  const [cols, setCols] = useState(readStoredCols);
+  const storedCols = useSyncExternalStore(subscribeCols, getColsSnapshot, getColsServerSnapshot);
+  const [colsOverride, setColsOverride] = useState<Record<ColKey, boolean> | null>(null);
+  const cols = colsOverride ?? storedCols;
   const [displayOpen, setDisplayOpen] = useState(false);
   const [navPending, startNav] = useTransition();
   const [reviewPending, startReview] = useTransition();
@@ -145,11 +162,13 @@ export function LeadsWorkbench({
   }, [selectedId, items, selectLead, detailReady, reviewPending, peekDetail, runReview]);
 
   function toggleCol(key: ColKey) {
-    setCols((c) => {
-      const next = { ...c, [key]: !c[key] };
+    const next = { ...cols, [key]: !cols[key] };
+    setColsOverride(next);
+    try {
       localStorage.setItem(COLS_KEY, JSON.stringify(next));
-      return next;
-    });
+    } catch {
+      /* ignore */
+    }
   }
 
   const approved = detailReady ? peekApproved : false;

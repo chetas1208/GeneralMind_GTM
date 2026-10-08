@@ -64,7 +64,14 @@ export default async function AccountPage({ params, searchParams }: PageProps<"/
             </p>
             <p className="font-mono text-2xl font-semibold tabular-nums">{company.accountPriority || "—"}</p>
           </div>
-          <ScoreBadge score={company.companyFitScore} max={40} size="lg" metric="companyFit" band={company.companyFitScore == null ? null : fitBand(company.companyFitScore, 40)} />
+          <div className="text-right">
+            <p className="inline-flex items-center justify-end gap-1 text-[10px] uppercase text-muted-foreground">
+              Company Fit <MetricInfo metric="companyFit" internal={company.companyFitScore ? company.companyFitScore / 40 : null} />
+            </p>
+            <div className="mt-1 flex justify-end">
+              <ScoreBadge score={company.companyFitScore} max={40} size="lg" band={company.companyFitScore == null ? null : fitBand(company.companyFitScore, 40)} />
+            </div>
+          </div>
           <RefreshAccountButton companyId={id} />
         </div>
       </div>
