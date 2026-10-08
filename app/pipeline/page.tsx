@@ -51,44 +51,74 @@ export default async function PipelinePage({ searchParams }: PageProps<"/pipelin
       {mode === "board" ? (
         <PipelineBoard columns={JSON.parse(JSON.stringify(columnData))} />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border/60 bg-card/30">
-          <table className="w-full min-w-[560px] text-left">
-            <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2 font-medium">Person</th>
-                <th className="px-4 py-2 font-medium">Score</th>
-                <th className="px-4 py-2 font-medium">Signal</th>
-                <th className="px-4 py-2 font-medium">Status</th>
-                <th className="px-4 py-2 font-medium">Updated</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40">
-              {columnData.flatMap((col) =>
-                col.items.map((l) => {
-                  const conf = confidencePresentation(l.attendanceType);
-                  return (
-                    <tr key={l.id} className="hover:bg-accent/30">
-                      <td className="px-4 py-2.5">
-                        <Link href={`/leads?lead=${l.id}`} className="font-medium hover:underline">
-                          {l.person.fullName}
-                        </Link>
-                        <div className="text-xs text-muted-foreground">{l.company?.name}</div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                        {eventName.get(l.event.id)?.slice(0, 28) ?? l.event.name} · {signalLabel(l.attendanceType)} · {conf.tier}
-                      </td>
-                      <td className="px-4 py-2.5 text-xs">{leadStatusLabel(l.status)}</td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatRelative(l.createdAt)}</td>
-                    </tr>
-                  );
-                }),
-              )}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <ul className="divide-y rounded-xl border border-border/80 bg-card/30 md:hidden">
+            {columnData.flatMap((col) =>
+              col.items.map((l) => {
+                const conf = confidencePresentation(l.attendanceType);
+                return (
+                  <li key={l.id}>
+                    <Link href={`/leads?lead=${l.id}`} className="block px-3 py-3 hover:bg-accent/40">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium">{l.person.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{l.company?.name ?? "—"}</p>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0">
+                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                          <span className="mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-secondary text-secondary-foreground">
+                            {leadStatusLabel(l.status)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground truncate">
+                        {eventName.get(l.event.id)?.slice(0, 30) ?? l.event.name} · {signalLabel(l.attendanceType)} · {conf.tier}
+                      </p>
+                    </Link>
+                  </li>
+                );
+              }),
+            )}
+          </ul>
+          <div className="hidden overflow-x-auto rounded-xl border border-border/60 bg-card/30 md:block">
+            <table className="w-full min-w-[560px] text-left">
+              <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2 font-medium">Person</th>
+                  <th className="px-4 py-2 font-medium">Score</th>
+                  <th className="px-4 py-2 font-medium">Signal</th>
+                  <th className="px-4 py-2 font-medium">Status</th>
+                  <th className="px-4 py-2 font-medium">Updated</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {columnData.flatMap((col) =>
+                  col.items.map((l) => {
+                    const conf = confidencePresentation(l.attendanceType);
+                    return (
+                      <tr key={l.id} className="hover:bg-accent/30">
+                        <td className="px-4 py-2.5">
+                          <Link href={`/leads?lead=${l.id}`} className="font-medium hover:underline">
+                            {l.person.fullName}
+                          </Link>
+                          <div className="text-xs text-muted-foreground">{l.company?.name}</div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {eventName.get(l.event.id)?.slice(0, 28) ?? l.event.name} · {signalLabel(l.attendanceType)} · {conf.tier}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs">{leadStatusLabel(l.status)}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatRelative(l.createdAt)}</td>
+                      </tr>
+                    );
+                  }),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );
