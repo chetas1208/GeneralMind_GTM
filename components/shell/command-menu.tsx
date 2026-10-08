@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Result = { id: string; label: string; sub: string; href: string };
@@ -13,10 +13,13 @@ export function CommandMenu({ open, onOpenChange }: { open: boolean; onOpenChang
   const [q, setQ] = useState("");
   const [data, setData] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [navigatingHref, setNavigatingHref] = useState<string | null>(null);
+  const [isNavigating, startNavTransition] = useTransition();
 
   const close = useCallback(() => {
     setQ("");
     setData(null);
+    setNavigatingHref(null);
     onOpenChange(false);
   }, [onOpenChange]);
 
@@ -88,14 +91,23 @@ export function CommandMenu({ open, onOpenChange }: { open: boolean; onOpenChang
                       <button
                         key={item.id + item.href}
                         type="button"
-                        className={cn("flex w-full flex-col rounded-lg px-2 py-2 text-left hover:bg-accent")}
+                        disabled={isNavigating}
+                        className={cn("flex w-full items-start justify-between rounded-lg px-2 py-2 text-left hover:bg-accent", navigatingHref === item.href && "bg-accent/80")}
                         onClick={() => {
-                          close();
-                          router.push(item.href);
+                          setNavigatingHref(item.href);
+                          startNavTransition(() => {
+                            router.push(item.href);
+                            close();
+                          });
                         }}
                       >
-                        <span className="font-medium">{item.label}</span>
-                        {item.sub && <span className="text-xs text-muted-foreground">{item.sub}</span>}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium">{item.label}</span>
+                          {item.sub && <span className="block truncate text-xs text-muted-foreground">{item.sub}</span>}
+                        </div>
+                        {navigatingHref === item.href && (
+                          <Loader2 className="ml-2 mt-1 size-3.5 shrink-0 animate-spin text-primary" />
+                        )}
                       </button>
                     ))}
                   </div>

@@ -39,11 +39,15 @@ export async function tickRun(runId: string, opts: { budgetMs?: number; rethrow?
   const budgetMs = opts.budgetMs ?? 42_000;
   const leased = await acquireLease(runId, budgetMs + 20_000);
   if (!leased) {
-    // A cancel-requested run is never leased again; whoever ticks next finalizes it once no worker holds the lease.
+    // A cancel-requested run is never leased again; whoever ticks next finalizes it once no worker holds the lease or timeout has passed.
     const current = await getRun(runId);
-    if (current?.status === "cancel_requested" && !(current.leaseUntil && current.leaseUntil.getTime() > Date.now())) {
-      await finalizeRunCancelled(runId);
-      return getRun(runId);
+    if (current?.status === "cancel_requested") {
+      const leaseExpired = !(current.leaseUntil && current.leaseUntil.getTime() > Date.now());
+      const ageMs = current.updatedAt ? Date.now() - new Date(current.updatedAt).getTime() : 0;
+      if (leaseExpired || ageMs > 15_000) {
+        await finalizeRunCancelled(runId);
+        return getRun(runId);
+      }
     }
     return current;
   }

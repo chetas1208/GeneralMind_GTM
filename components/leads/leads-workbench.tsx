@@ -51,6 +51,7 @@ export type LeadsWorkbenchProps = {
     persona?: string;
     industry?: string;
     minScore?: number;
+    minPriority?: number;
     minAttendance?: number;
     sort: LeadSort;
   };
@@ -153,8 +154,8 @@ export function LeadsWorkbench({
 
   const approved = detailReady ? peekApproved : false;
   const defaultSort = viewKey === "review" ? "priority" : "score";
-  const hasFilters = Boolean(filters.q || filters.eventId || filters.minScore || sp.get("sort"));
-  const filterKey = [viewKey, filters.q ?? "", filters.eventId ?? "", filters.minScore ?? "", filters.sort].join("|");
+  const hasFilters = Boolean(filters.q || filters.eventId || filters.minScore || filters.minPriority || sp.get("sort"));
+  const filterKey = [viewKey, filters.q ?? "", filters.eventId ?? "", filters.minScore ?? "", filters.minPriority ?? "", filters.sort].join("|");
 
   return (
     <div className="flex min-h-[calc(100vh-6rem)] flex-col gap-4 lg:flex-row lg:gap-0">
@@ -193,11 +194,13 @@ export function LeadsWorkbench({
             const q = String(fd.get("q") ?? "").trim();
             const event = String(fd.get("event") ?? "");
             const minScore = String(fd.get("minScore") ?? "");
+            const minPriority = String(fd.get("minPriority") ?? "");
             const sort = String(fd.get("sort") ?? "");
             if (viewKey !== "review") p.set("view", viewKey);
             if (q) p.set("q", q);
             if (event) p.set("event", event);
             if (minScore) p.set("minScore", minScore);
+            if (minPriority) p.set("minPriority", minPriority);
             if (sort && sort !== defaultSort) p.set("sort", sort);
             const qs = p.toString();
             startNav(() => router.push(qs ? `/leads?${qs}` : "/leads", { scroll: false }));
@@ -212,8 +215,16 @@ export function LeadsWorkbench({
               </option>
             ))}
           </select>
-          <select name="minScore" defaultValue={filters.minScore ?? ""} className="h-8 rounded-lg border bg-card/80 px-2 text-[13px]" aria-label="Min score">
-            <option value="">Score</option>
+          <select name="minPriority" defaultValue={filters.minPriority ?? ""} className="h-8 rounded-lg border bg-card/80 px-2 text-[13px]" aria-label="Min priority">
+            <option value="">Priority</option>
+            {[55, 65, 75, 85].map((n) => (
+              <option key={n} value={n}>
+                ≥ {n}
+              </option>
+            ))}
+          </select>
+          <select name="minScore" defaultValue={filters.minScore ?? ""} className="h-8 rounded-lg border bg-card/80 px-2 text-[13px]" aria-label="Min qualification score">
+            <option value="">Score (Fit)</option>
             {[55, 65, 75, 85].map((n) => (
               <option key={n} value={n}>
                 ≥ {n}
@@ -286,7 +297,10 @@ export function LeadsWorkbench({
                       <p className="font-medium">{l.person.fullName}</p>
                       <p className="text-xs text-muted-foreground">{l.person.title ?? "Role unknown"} · {l.company?.name ?? "—"}</p>
                     </div>
-                    <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                    <div className="flex flex-col items-end shrink-0">
+                      <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                      <span className="mt-0.5 font-mono text-[11px] text-muted-foreground" title="Qualification score">Score {l.totalScore}</span>
+                    </div>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{l.event.name} · {leadStatusLabel(l.status)}</p>
                 </button>
@@ -294,10 +308,15 @@ export function LeadsWorkbench({
             ))}
           </ul>
           <div className="hidden overflow-x-auto rounded-xl border border-border/80 bg-card/30 md:block">
-            <table className="w-full min-w-[720px] text-left">
+            <table className="w-full min-w-[760px] text-left">
               <thead className="border-b border-border/60 text-[10px] uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Priority</th>
+                  <th className="px-3 py-2 font-medium">
+                    <span className="inline-flex items-center gap-1">Priority <MetricInfo metric="priority" /></span>
+                  </th>
+                  <th className="px-3 py-2 font-medium">
+                    <span className="inline-flex items-center gap-1">Score <MetricInfo metric="qualificationScore" /></span>
+                  </th>
                   <th className="px-3 py-2 font-medium">Person</th>
                   <th className="px-3 py-2 font-medium">Company</th>
                   <th className="px-3 py-2 font-medium">Signal</th>
@@ -327,6 +346,9 @@ export function LeadsWorkbench({
                     >
                       <td className="px-3 py-2">
                         <ScoreBadge score={l.priorityScore} size="sm" metric="priority" />
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">
+                        <ScoreBadge score={l.totalScore} size="sm" metric="qualificationScore" />
                       </td>
                       <td className="px-3 py-2">
                         <div className="font-medium">{l.person.fullName}</div>

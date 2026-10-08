@@ -29,6 +29,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   const industry = one(sp.industry) || undefined;
   const q = one(sp.q) || undefined;
   const minScore = Number(one(sp.minScore)) || undefined;
+  const minPriority = Number(one(sp.minPriority)) || undefined;
   const minAttendance = Number(one(sp.minAttendance)) || undefined;
   const sort = (one(sp.sort) as LeadSort | undefined) ?? (view.key === "review" ? "priority" : "score");
 
@@ -36,7 +37,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
   const peekValid = peekId && /^[0-9a-f-]{36}$/i.test(peekId) ? peekId : undefined;
 
   const [{ items, total }, counts, events, personas, peekRow] = await Promise.all([
-    listLeads({ eventId, statuses: view.statuses, persona, industry, q, minScore, minAttendance, sort, limit: 200 }),
+    listLeads({ eventId, statuses: view.statuses, persona, industry, q, minScore, minPriority, minAttendance, sort, limit: 200 }),
     statusCounts(),
     listEvents(),
     distinctPersonas(),
@@ -54,7 +55,7 @@ export default async function LeadsPage({ searchParams }: PageProps<"/leads">) {
       views={VIEWS.map((v) => ({ key: v.key, label: v.label, count: countFor(v) }))}
       events={events.map((e) => ({ id: e.id, name: e.name }))}
       personas={personas}
-      filters={{ q, eventId, persona, industry, minScore, minAttendance, sort }}
+      filters={{ q, eventId, persona, industry, minScore, minPriority, minAttendance, sort }}
       crmConfigured={isConfigured("HUBSPOT_ACCESS_TOKEN")}
       peekDetail={peekRow ? JSON.parse(JSON.stringify(peekRow)) : null}
       peekApproved={peekRow ? isApproved(peekRow) : false}

@@ -3,7 +3,13 @@ export const METRIC_COPY = {
     label: "Priority",
     description: "How actionable this opportunity is right now.",
     factors: ["Account fit", "Persona fit", "Signal strength", "Evidence quality", "Urgency", "Contactability"],
-    interpretation: "Higher means this deserves attention sooner.",
+    interpretation: "Higher means this deserves attention sooner (blends intrinsic qualification with timing and contact routes).",
+  },
+  qualificationScore: {
+    label: "Qualification score",
+    description: "Intrinsic ICP fit based on account fit, persona fit, and signal strength (0–100).",
+    factors: ["Company ICP match", "Persona role match", "Observed market signal"],
+    interpretation: "Higher means stronger ideal customer profile fit, independent of event timing or outreach routes.",
   },
   momentum: {
     label: "Opportunity momentum",

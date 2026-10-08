@@ -7,7 +7,7 @@ import { ScoreBadge } from "@/components/gtm/badges";
 import { MetricInfo } from "@/components/ui/metric-info";
 import { relevanceBand } from "@/lib/confidence";
 import { GraphView } from "@/components/graph/graph-view-lazy";
-import { MomentumChart } from "@/components/radar/momentum-chart";
+import { MomentumChart } from "@/components/radar/momentum-chart-lazy";
 import { loadActivity } from "@/lib/analytics/activity";
 import { loadDrivers } from "@/lib/analytics/drivers";
 import { explainDrivers, plainNarrative } from "@/lib/analytics/narrative";

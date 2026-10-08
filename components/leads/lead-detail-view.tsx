@@ -158,6 +158,7 @@ export function LeadDetailView({
           <div className="text-right">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Priority</p>
             <ScoreBadge score={lead.priorityScore} size="lg" metric="priority" />
+            <p className="mt-1 font-mono text-[11px] text-muted-foreground" title="Intrinsic qualification score">Score {lead.totalScore}/100</p>
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -248,14 +249,18 @@ export function LeadDetailView({
 
       {breakdown && (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Score</h3>
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qualification &amp; Priority</h3>
           <div className="space-y-2 rounded-lg border bg-card/50 p-3 font-mono text-[12px] tabular-nums">
             <Row label="Company fit" value={fitBand(breakdown.company.total, breakdown.company.max)} metric="companyFit" internal={breakdown.company.total / breakdown.company.max} />
             <Row label="Persona fit" value={fitBand(breakdown.persona.total, breakdown.persona.max)} metric="personaFit" internal={breakdown.persona.total / breakdown.persona.max} />
             <Row label="Signal strength" value={fitBand(breakdown.intent.total, breakdown.intent.max)} metric="signalStrength" internal={breakdown.intent.total / breakdown.intent.max} />
-            <div className="border-t border-border/60 pt-2 font-semibold">
-              Priority {lead.priorityScore}
-              <MetricInfo metric="priority" value={lead.priorityScore} />
+            <div className="flex items-center justify-between border-t border-border/60 pt-2 font-medium text-muted-foreground">
+              <span className="inline-flex items-center gap-1">Qualification score <MetricInfo metric="qualificationScore" /></span>
+              <span className="font-semibold text-foreground">{lead.totalScore} / 100</span>
+            </div>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="inline-flex items-center gap-1">Actionable priority <MetricInfo metric="priority" value={lead.priorityScore} /></span>
+              <span className="text-foreground">{lead.priorityScore} / 100</span>
             </div>
           </div>
           <details className="mt-2">

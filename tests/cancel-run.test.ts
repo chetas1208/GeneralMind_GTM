@@ -41,9 +41,16 @@ describe("cooperative cancellation (shared by Inngest and /tick)", () => {
 
   it("does not finalize while another worker still holds the lease", async () => {
     q.acquireLease.mockResolvedValue(null);
-    q.getRun.mockResolvedValue(run("cancel_requested", { leaseUntil: new Date(Date.now() + 30_000) }));
+    q.getRun.mockResolvedValue(run("cancel_requested", { leaseUntil: new Date(Date.now() + 30_000), updatedAt: new Date() }));
     await tickRun("r1");
     expect(q.finalizeRunCancelled).not.toHaveBeenCalled();
+  });
+
+  it("finalizes if cancel_requested has timed out even if lease is still stamped", async () => {
+    q.acquireLease.mockResolvedValue(null);
+    q.getRun.mockResolvedValue(run("cancel_requested", { leaseUntil: new Date(Date.now() + 30_000), updatedAt: new Date(Date.now() - 25_000) }));
+    await tickRun("r1");
+    expect(q.finalizeRunCancelled).toHaveBeenCalledWith("r1");
   });
 
   it("stops after the in-flight batch instead of starting another", async () => {

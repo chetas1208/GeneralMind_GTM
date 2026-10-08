@@ -1,5 +1,6 @@
 import "server-only";
 import { createEvent, eventDedupeKey, findEventByDedupeKey, findEventByNameAndStart, getEvent, upsertEventSource } from "@/lib/db/queries/events";
+import { getRunStatus } from "@/lib/db/queries/runs";
 import { hostOf, resolveOfficialUrl } from "@/lib/events/discover";
 import { extractEventCandidate } from "@/lib/ai/tasks";
 import { AiValidationError } from "@/lib/ai/provider";
@@ -72,6 +73,7 @@ export async function discoveryStep(ctx: RunContext): Promise<StepResult> {
     const batch = hits.slice(start, start + CANDIDATES_PER_STEP);
     const today = new Date().toISOString().slice(0, 10);
     const outcomes = await mapSettled(batch, 3, async (hit) => {
+      if ((await getRunStatus(ctx.run.id)) === "cancel_requested") return { skipped: "cancelled by user" as const };
       if (hit.text.length < 200) return { skipped: "too little text" as const };
       const cand = await extractEventCandidate({ url: hit.url, title: hit.title, text: hit.text });
       if (!cand.isEvent || !cand.name) return { skipped: `not a specific event (${cand.rationale.slice(0, 80)})` };
@@ -134,6 +136,7 @@ export async function discoveryStep(ctx: RunContext): Promise<StepResult> {
     const start = c.assessDone ?? 0;
     const batch = queue.slice(start, start + ASSESS_PER_STEP);
     const results = await mapSettled(batch, ASSESS_PER_STEP, async (id) => {
+      if ((await getRunStatus(ctx.run.id)) === "cancel_requested") return null;
       const event = await getEvent(id);
       if (!event) return null;
       const gathered = await gatherEventSources(id);

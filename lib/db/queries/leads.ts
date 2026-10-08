@@ -168,6 +168,7 @@ export type LeadFilters = {
   eventId?: string;
   statuses?: LeadStatus[];
   minScore?: number;
+  minPriority?: number;
   minAttendance?: number;
   persona?: string;
   industry?: string;
@@ -208,6 +209,7 @@ function buildWhere(f: LeadFilters): SQL | undefined {
     f.eventId ? eq(eventLeads.eventId, f.eventId) : undefined,
     f.statuses?.length ? inArray(eventLeads.status, f.statuses) : undefined,
     f.minScore ? gte(eventLeads.totalScore, f.minScore) : undefined,
+    f.minPriority ? gte(eventLeads.priorityScore, f.minPriority) : undefined,
     f.minAttendance ? gte(eventLeads.attendanceConfidence, f.minAttendance) : undefined,
     f.persona ? eq(people.persona, f.persona) : undefined,
     f.industry ? ilike(companies.industry, `%${f.industry}%`) : undefined,

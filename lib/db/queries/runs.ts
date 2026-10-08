@@ -44,7 +44,13 @@ export async function reclaimStaleActiveRun(eventId: string | null, kind: "lead_
     return;
   }
   const leaseExpired = !active.leaseUntil || active.leaseUntil.getTime() < Date.now();
-  if ((active.status === "running" || active.status === "cancel_requested") && leaseExpired && ageMs > STALE_RUNNING_MS) {
+  if (active.status === "cancel_requested") {
+    if (leaseExpired || ageMs > 20_000) {
+      await finalizeRunCancelled(active.id);
+      return;
+    }
+  }
+  if (active.status === "running" && leaseExpired && ageMs > STALE_RUNNING_MS) {
     await markRunFailed(active.id, "Previous run stopped making progress and was reset. Start it again.");
   }
 }
@@ -158,7 +164,7 @@ export async function requestCancel(id: string): Promise<RunRow | null> {
   const run = await getRun(id);
   if (!run || isTerminal(run.status)) return run;
   const leaseHeld = run.leaseUntil && run.leaseUntil.getTime() > Date.now();
-  if (run.status === "queued" || !leaseHeld) {
+  if (run.status === "queued" || !leaseHeld || run.status === "cancel_requested") {
     await finalizeRunCancelled(id);
   } else {
     await getDb().update(sourceRuns).set({ status: "cancel_requested", updatedAt: new Date() }).where(and(eq(sourceRuns.id, id), eq(sourceRuns.status, "running")));
