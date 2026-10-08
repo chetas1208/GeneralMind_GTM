@@ -488,6 +488,66 @@ Verified profiles flow to HubSpot as `hs_linkedin_url` (https LinkedIn `/in/` UR
 - Saved ICP profiles and a bounded broad-account-discovery pathway.
 - Inngest-scheduled daily refresh with budgets.
 
+## Engineering Tradeoffs
+
+Deliberate architectural decisions made for production correctness over agent theater:
+
+1. **Precision over Raw Lead Volume**: Conservative heuristics reject ambiguous attendance signals rather than flooding CRM with low-confidence noise.
+2. **Deterministic Scoring over LLM-Only Scoring**: Rules-based mathematical scoring guarantees explainable, reproducible priority weights (the model never generates score integers).
+3. **Parallel Retrieval over Parallel Reasoning**: Retrieval is parallelized across orthogonal lanes; reasoning is centralized to 2–3 structured LLM calls rather than 20–40 recursive agents.
+4. **Human CRM Approval over Autonomous Writes**: Strict reviewer gate prevents automatic or unauthorized external CRM modifications.
+5. **Postgres Projections over Graph Database**: Neon PostgreSQL with typed Drizzle ORM provides ACID durability and relational joins without dedicated graph database infrastructure.
+6. **Event-Driven Workflows over Vercel Cron**: Inngest durable executions handle background work and retries; no periodic cron polls or resource leaks.
+7. **Bounded Research over Uncontrolled Agent Loops**: Strict budget tracker and Search Utility stopping policy enforce hard ceilings on queries, tokens, and wall time.
+
+## Production Security & Framework Patches
+
+- **Patched Framework Baseline**: Built on **Next.js 16.4.0** and **React 19.2.8**, incorporating official security patches for App Router / proxy authorization, SSRF protections, cache poisoning, XSS, and server-side request isolation.
+- **Access Gate & Middleware Isolation**: Centralized proxy gate in [`proxy.ts`](file:///home/923873155/Generalmind%20GTM%20Project/proxy.ts) validates signed HMAC session claims before routing to private endpoints. Mutation endpoints independently enforce `requireReviewer()`.
+- **SSRF Defense**: Strict server-side IP filtering ([`lib/ssrf.ts`](file:///home/923873155/Generalmind%20GTM%20Project/lib/ssrf.ts)) blocks loopback (`127.0.0.1`, `::1`), link-local (`169.254.169.254`), RFC1918 private subnets, cloud metadata endpoints, and non-HTTP protocols.
+- **Prompt-Injection Boundary**: All external web excerpts are treated as untrusted data wrapped in strict delimiter boundaries ([`lib/ai/untrusted.ts`](file:///home/923873155/Generalmind%20GTM%20Project/lib/ai/untrusted.ts)) instructing models never to interpret source text as system instructions.
+- **CSP & Security Headers**: Strict HTTP headers configured in [`next.config.ts`](file:///home/923873155/Generalmind%20GTM%20Project/next.config.ts): `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Permissions-Policy`.
+- **Zero Committed Secrets**: `.env.example` contains only placeholder keys; all credentials (`DATABASE_URL`, API keys, `AUTH_SECRET`) are server-only environment variables never leaked to client bundles.
+
+## Observability & Rollback Plan
+
+- **Structured Observability**: Server-side structured logger (`lib/logger.ts`) emits JSON logs with provider, method, status, error kind, and attempt count for every external integration.
+- **Instant Rollback**: If a deployment anomaly occurs in production:
+  1. Open the Vercel Dashboard → *Deployments*.
+  2. Locate the previous verified production deployment tag (e.g. `v1.0.0-case-study`).
+  3. Click **Instant Rollback** to redirect production traffic immediately without rebuilding.
+
+## 5 to 7 Minute Demo Script
+
+### 0:00–0:45 | The GTM Problem
+- Explain that enterprise GTM intelligence is fragmented: teams scrape hundreds of unvetted names but don't know who matters, why now, or whether the evidence is real.
+
+### 0:45–1:30 | Radar & Momentum
+- Open **Radar** (`/radar`). Walk through signal momentum, high-impact events, and top priority opportunities.
+
+### 1:30–2:15 | Event Context (Demo: ProcureCon Indirect West 2026)
+- Drill into the event card. Explain why this conference matters to GeneralMind (indirect procurement leadership, P2P automation focus).
+
+### 2:15–3:15 | Lead Opportunity (Demo: Marcus Vance, Omni Logistics)
+- View lead detail: Marcus Vance (VP Global Procurement).
+- Walk through Priority Score (88), attendance confidence (Confirmed Speaker), and the "Why Now" rationale.
+
+### 3:15–4:00 | Provenance & Evidence
+- Inspect the Evidence Drawer: show stored source URLs, verbatim excerpts, and distinction between verified facts and inferences.
+
+### 4:00–4:45 | GTM Search Compiler
+- Explain the differentiator: *"We don't throw 10 unguided agents at every lead. The Search Compiler decomposes target uncertainty into 6 parallel lanes, queries Exa concurrently with an AIMD governor, shares evidence on a blackboard, and stops immediately when marginal search utility collapses."*
+
+### 4:45–5:30 | Trace & Auditability
+- Inspect the scoped provenance chain connecting market signal → account → person → verified evidence.
+
+### 5:30–6:15 | Human Gate & CRM Sync
+- Click **Approve**.
+- Click **Push to HubSpot**: explain the human reviewer gate and idempotent company/contact upsert.
+
+### 6:15–7:00 | Beyond Events: Universal Market Signals
+- Summarize the extension from conference attendance to general signals (ERP migrations, executive changes, distribution expansions). Done.
+
 ## Why this architecture
 
 - **Signals, not events,** are the reusable primitive; events are simply the first adapter, so adding hiring or ERP detection didn't touch the scoring engine.

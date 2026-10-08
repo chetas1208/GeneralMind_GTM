@@ -24,7 +24,7 @@
     "drizzle-orm": "^0.45.3",
     "inngest": "^4.21.1",
     "lucide-react": "^1.52.0",
-    "next": "16.3.8",
+    "next": "16.4.0",
     "openai": "^7.28.0",
     "p-limit": "^7.3.3",
     "react": "19.2.8",
@@ -46,11 +46,14 @@
     "dotenv": "^18.0.5",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
-    "eslint-config-next": "16.3.8",
+    "eslint-config-next": "16.4.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.3"
   },
-  "packageManager": "pnpm@11.23.0"
+  "packageManager": "pnpm@11.23.0",
+  "overrides": {
+    "esbuild": "^0.25.0"
+  }
 }
